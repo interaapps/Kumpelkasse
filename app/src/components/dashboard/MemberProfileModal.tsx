@@ -3,14 +3,16 @@ import { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { fetchRelationshipHistory } from '@/api/debt-api';
 import { Avatar } from '@/components/dashboard/Avatar';
 import { FormTextInput } from '@/components/dashboard/event-modal/EventModalForm';
-import { Member } from '@/types/debt';
-import { getInitials } from '@/utils/debt';
+import { DebtEvent, Member, RelationshipHistory } from '@/types/debt';
+import { formatEuro, getInitials } from '@/utils/debt';
 
 type MemberProfileModalProps = {
   visible: boolean;
   member: Member | null;
+  groupId: string;
   currentUserId: string;
   onClose: () => void;
   onSave: (member: Member) => void | Promise<void>;
@@ -26,16 +28,50 @@ type PaymentCardAction = {
 export function MemberProfileModal({
   visible,
   member,
+  groupId,
   currentUserId,
   onClose,
   onSave,
   onLogout,
 }: MemberProfileModalProps) {
   const [draft, setDraft] = useState<Member | null>(member);
+  const [relationshipHistory, setRelationshipHistory] = useState<RelationshipHistory | null>(null);
+  const [relationshipLoading, setRelationshipLoading] = useState(false);
 
   useEffect(() => {
     setDraft(member);
   }, [member, visible]);
+
+  useEffect(() => {
+    if (!visible || !member || member.id === currentUserId) {
+      setRelationshipHistory(null);
+      return;
+    }
+
+    let active = true;
+    setRelationshipLoading(true);
+
+    fetchRelationshipHistory(groupId, member.id)
+      .then((result) => {
+        if (active) {
+          setRelationshipHistory(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRelationshipHistory(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRelationshipLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, groupId, member, visible]);
 
   if (!member || !draft) {
     return null;
@@ -92,7 +128,14 @@ export function MemberProfileModal({
           {isOwnProfile ? (
             <ProfileEditCards draft={draft} setDraft={setDraft} onLogout={handleLogout} />
           ) : (
-            <PaymentInfoCards member={member} />
+            <>
+              <PaymentInfoCards member={member} />
+              <RelationshipSection
+                history={relationshipHistory}
+                loading={relationshipLoading}
+                currentUserId={currentUserId}
+              />
+            </>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -185,6 +228,36 @@ function ProfileEditCards({
         />
       </View>
 
+      <View style={styles.formCard}>
+        <Text style={styles.sectionTitle}>Erinnerungen</Text>
+        <ToggleRow
+          label="Push Erinnerungen"
+          value={Boolean(draft.notificationsEnabled)}
+          onToggle={() => setDraft((current) => current && { ...current, notificationsEnabled: !current.notificationsEnabled })}
+        />
+        <ToggleRow
+          label="Auto Refresh im Hintergrund"
+          value={Boolean(draft.backgroundRefreshEnabled)}
+          onToggle={() =>
+            setDraft((current) => current && { ...current, backgroundRefreshEnabled: !current.backgroundRefreshEnabled })
+          }
+        />
+        <FormTextInput
+          label="Erinnerungsstunde"
+          value={String(draft.notificationHour ?? 20)}
+          onChangeText={(value) =>
+            setDraft((current) =>
+              current && {
+                ...current,
+                notificationHour: Number.isFinite(Number(value)) ? Math.max(0, Math.min(23, Number(value))) : current.notificationHour,
+              },
+            )
+          }
+          placeholder="20"
+          keyboardType="number-pad"
+        />
+      </View>
+
       <Pressable style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]} onPress={onLogout}>
         <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={19} tintColor="#B42318" />
         <Text style={styles.logoutText}>Ausloggen</Text>
@@ -204,6 +277,82 @@ function PaymentInfoCards({ member }: { member: Member }) {
       ))}
       {member.note && <PaymentInfoCard label="Notiz" value={member.note} />}
     </View>
+  );
+}
+
+function RelationshipSection({
+  history,
+  loading,
+  currentUserId,
+}: {
+  history: RelationshipHistory | null;
+  loading: boolean;
+  currentUserId: string;
+}) {
+  return (
+    <View style={styles.cardStack}>
+      <View style={styles.formCard}>
+        <Text style={styles.sectionTitle}>Gemeinsame Events</Text>
+        {loading ? (
+          <Text style={styles.helperText}>Wir laden gerade eure gemeinsame Historie.</Text>
+        ) : history ? (
+          <>
+            <View style={styles.relationshipMetrics}>
+              <RelationshipMetric label="Netto" value={formatEuro(history.summary.netCents, { signed: true })} />
+              <RelationshipMetric label="Du schuldest" value={formatEuro(history.summary.youOweCents)} />
+              <RelationshipMetric label="Du bekommst" value={formatEuro(history.summary.owesYouCents)} />
+            </View>
+            <View style={styles.relationshipList}>
+              {history.events.length === 0 ? (
+                <Text style={styles.helperText}>Zwischen euch gibt es in dieser Gruppe noch keine gemeinsamen Events.</Text>
+              ) : (
+                history.events.slice(0, 8).map((event) => (
+                  <RelationshipEventCard key={event.id} event={event} currentUserId={currentUserId} />
+                ))
+              )}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.helperText}>Die gemeinsame Historie konnte gerade nicht geladen werden.</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function RelationshipMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.relationshipMetric}>
+      <Text style={styles.relationshipLabel}>{label}</Text>
+      <Text style={styles.relationshipValue}>{value}</Text>
+    </View>
+  );
+}
+
+function RelationshipEventCard({ event, currentUserId }: { event: DebtEvent; currentUserId: string }) {
+  const ownAmount = event.lines.find((line) => line.memberId === currentUserId)?.amountCents ?? 0;
+
+  return (
+    <View style={styles.relationshipEventCard}>
+      <View style={styles.relationshipEventHeader}>
+        <Text style={styles.relationshipEventTitle}>{event.title}</Text>
+        <Text style={[styles.relationshipEventAmount, ownAmount >= 0 ? styles.positiveText : styles.negativeText]}>
+          {formatEuro(ownAmount, { signed: true })}
+        </Text>
+      </View>
+      <Text style={styles.relationshipEventDescription}>{event.description || formatDate(event.createdAt)}</Text>
+    </View>
+  );
+}
+
+function ToggleRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.toggleRow, pressed && styles.pressed]} onPress={onToggle}>
+      <Text style={styles.toggleLabel}>{label}</Text>
+      <View style={[styles.togglePill, value && styles.togglePillActive]}>
+        <Text style={[styles.toggleText, value && styles.toggleTextActive]}>{value ? 'An' : 'Aus'}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -368,6 +517,15 @@ function stripHandlePrefix(value: string) {
   return value.trim().replace(/^[@$]/, '');
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: '#F7F8F4',
@@ -463,11 +621,109 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
+  helperText: {
+    color: '#667085',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
   sectionTitle: {
     color: '#101828',
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.3,
+  },
+  toggleRow: {
+    alignItems: 'center',
+    backgroundColor: '#F6F7F8',
+    borderRadius: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 54,
+    paddingHorizontal: 14,
+  },
+  toggleLabel: {
+    color: '#111827',
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  togglePill: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 999,
+    minWidth: 62,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  togglePillActive: {
+    backgroundColor: '#DDF6E6',
+  },
+  toggleText: {
+    color: '#475467',
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  toggleTextActive: {
+    color: '#159447',
+  },
+  relationshipMetrics: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  relationshipMetric: {
+    backgroundColor: '#F6F7F8',
+    borderRadius: 20,
+    flex: 1,
+    gap: 4,
+    padding: 14,
+  },
+  relationshipLabel: {
+    color: '#98A2B3',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  relationshipValue: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  relationshipList: {
+    gap: 10,
+  },
+  relationshipEventCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    gap: 6,
+    padding: 14,
+  },
+  relationshipEventHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  relationshipEventTitle: {
+    color: '#111827',
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  relationshipEventAmount: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  relationshipEventDescription: {
+    color: '#667085',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  positiveText: {
+    color: '#159447',
+  },
+  negativeText: {
+    color: '#D64545',
   },
   paymentCard: {
     alignItems: 'center',

@@ -3,20 +3,29 @@ package de.interaapps.weowe.debt.controller
 import de.interaapps.weowe.debt.auth.CurrentSessionToken
 import de.interaapps.weowe.debt.auth.CurrentUser
 import de.interaapps.weowe.debt.domain.DebtEvent
+import de.interaapps.weowe.debt.domain.EventDateRange
+import de.interaapps.weowe.debt.domain.EventType
 import de.interaapps.weowe.debt.domain.Group
 import de.interaapps.weowe.debt.domain.Member
 import de.interaapps.weowe.debt.dto.CreateGroupRequest
 import de.interaapps.weowe.debt.dto.DashboardResponse
+import de.interaapps.weowe.debt.dto.EventPageResponse
+import de.interaapps.weowe.debt.dto.GameHistoryResponse
 import de.interaapps.weowe.debt.dto.InviteResponse
 import de.interaapps.weowe.debt.dto.LoginRequest
 import de.interaapps.weowe.debt.dto.LoginResponse
 import de.interaapps.weowe.debt.dto.OidcLoginRequest
 import de.interaapps.weowe.debt.dto.RegisterRequest
+import de.interaapps.weowe.debt.dto.RelationshipHistoryResponse
 import de.interaapps.weowe.debt.dto.UpdateMemberRequest
 import de.interaapps.weowe.debt.dto.UpsertDebtEventRequest
+import de.interaapps.weowe.debt.dto.toResponse
+import de.interaapps.weowe.debt.service.AccessControlService
 import de.interaapps.weowe.debt.service.AuthFacade
 import de.interaapps.weowe.debt.service.DashboardService
 import de.interaapps.weowe.debt.service.DebtStore
+import de.interaapps.weowe.debt.service.EventFeedService
+import de.interaapps.weowe.debt.service.InsightsService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -36,6 +45,9 @@ import org.springframework.web.bind.annotation.RestController
 class DebtController(
     private val store: DebtStore,
     private val dashboardService: DashboardService,
+    private val eventFeedService: EventFeedService,
+    private val accessControl: AccessControlService,
+    private val insightsService: InsightsService,
     private val auth: AuthFacade,
 ) {
     @PostMapping("/auth/login")
@@ -68,13 +80,68 @@ class DebtController(
     ): DashboardResponse = dashboardService.getDashboard(groupId, currentUser.id)
 
     @GetMapping("/events/{eventId}")
-    fun getEvent(@PathVariable eventId: String): DebtEvent = store.getEvent(eventId)
+    fun getEvent(
+        @PathVariable eventId: String,
+        @CurrentUser currentUser: Member,
+    ): DebtEvent = accessControl.requireAccessibleEvent(currentUser.id, eventId)
+
+    @GetMapping("/events")
+    fun getEvents(
+        @RequestParam groupId: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false, name = "q") query: String?,
+        @RequestParam(required = false) type: String?,
+        @RequestParam(defaultValue = "false") mine: Boolean,
+        @RequestParam(required = false) range: EventDateRange?,
+        @CurrentUser currentUser: Member,
+    ): EventPageResponse =
+        eventFeedService.getEventPage(
+            currentUser = currentUser,
+            groupId = groupId,
+            page = page,
+            size = size,
+            query = query,
+            type = type?.let(EventType::from),
+            mineOnly = mine,
+            range = range,
+        ).toResponse()
 
     @GetMapping("/members/{memberId}")
-    fun getMember(@PathVariable memberId: String): Member = store.getMember(memberId)
+    fun getMember(
+        @PathVariable memberId: String,
+        @CurrentUser currentUser: Member,
+    ): Member = accessControl.requireAccessibleMember(currentUser.id, memberId)
 
     @GetMapping("/groups/{groupId}/members")
-    fun getGroupMembers(@PathVariable groupId: String): List<Member> = store.getMembersForGroup(groupId)
+    fun getGroupMembers(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ): List<Member> {
+        accessControl.requireGroupMember(currentUser.id, groupId)
+        return store.getMembersForGroup(groupId)
+    }
+
+    @GetMapping("/groups/{groupId}/stats")
+    fun getGroupStats(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ) = insightsService.getGroupStats(groupId, currentUser.id)
+
+    @GetMapping("/groups/{groupId}/members/{memberId}/history")
+    fun getRelationshipHistory(
+        @PathVariable groupId: String,
+        @PathVariable memberId: String,
+        @CurrentUser currentUser: Member,
+    ): RelationshipHistoryResponse =
+        insightsService.getRelationshipHistory(groupId, currentUser.id, memberId).toResponse()
+
+    @GetMapping("/groups/{groupId}/games/history")
+    fun getGameHistory(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ): GameHistoryResponse =
+        insightsService.getGameHistory(groupId, currentUser.id).toResponse()
 
     @PostMapping("/groups")
     @ResponseStatus(HttpStatus.CREATED)
@@ -103,14 +170,21 @@ class DebtController(
     fun createEvent(
         @CurrentUser currentUser: Member,
         @Valid @RequestBody request: UpsertDebtEventRequest,
-    ): DebtEvent = store.createEvent(request)
+    ): DebtEvent {
+        accessControl.requireGroupMember(currentUser.id, request.groupId)
+        return store.createEvent(request)
+    }
 
     @PutMapping("/events/{eventId}")
     fun updateEvent(
         @PathVariable eventId: String,
         @CurrentUser currentUser: Member,
         @Valid @RequestBody request: UpsertDebtEventRequest,
-    ): DebtEvent = store.updateEvent(eventId, request)
+    ): DebtEvent {
+        accessControl.requireAccessibleEvent(currentUser.id, eventId)
+        accessControl.requireGroupMember(currentUser.id, request.groupId)
+        return store.updateEvent(eventId, request)
+    }
 
     @DeleteMapping("/events/{eventId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -118,6 +192,7 @@ class DebtController(
         @PathVariable eventId: String,
         @CurrentUser currentUser: Member,
     ) {
+        accessControl.requireAccessibleEvent(currentUser.id, eventId)
         store.deleteEvent(eventId)
     }
 
@@ -134,5 +209,11 @@ class DebtController(
     }
 
     @GetMapping("/invites/{groupId}")
-    fun getInvite(@PathVariable groupId: String): InviteResponse = dashboardService.getInvite(groupId)
+    fun getInvite(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ): InviteResponse {
+        accessControl.requireGroupMember(currentUser.id, groupId)
+        return dashboardService.getInvite(groupId)
+    }
 }

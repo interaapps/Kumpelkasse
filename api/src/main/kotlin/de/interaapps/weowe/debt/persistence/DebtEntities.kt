@@ -1,6 +1,7 @@
 package de.interaapps.weowe.debt.persistence
 
 import de.interaapps.weowe.debt.domain.EventType
+import de.interaapps.weowe.debt.domain.GameMode
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -58,6 +59,12 @@ class UserEntity(
     var bankDetails: String? = null,
     @Column(length = 1_000)
     var note: String? = null,
+    @Column(nullable = false)
+    var notificationsEnabled: Boolean = false,
+    @Column(nullable = false)
+    var notificationHour: Int = 20,
+    @Column(nullable = false)
+    var backgroundRefreshEnabled: Boolean = false,
 )
 
 @Entity
@@ -107,6 +114,9 @@ class DebtEventEntity(
     var description: String? = null,
     @Column(nullable = false)
     var createdAt: Instant = Instant.now(),
+    @Enumerated(EnumType.STRING)
+    var gameMode: GameMode? = null,
+    var bankMemberId: String? = null,
     @OneToMany(mappedBy = "event", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.EAGER)
     var lines: MutableList<LedgerLineEntity> = mutableListOf(),
 )

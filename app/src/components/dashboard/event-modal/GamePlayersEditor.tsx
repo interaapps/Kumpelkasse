@@ -15,36 +15,48 @@ type GamePlayersEditorProps = {
   members: Member[];
   values: Record<string, GamePlayerValue>;
   deltaCents: number;
+  bankMemberId?: string | null;
+  autoBalancedCents?: number;
   onChange: (memberId: string, value: GamePlayerValue) => void;
 };
 
-export function GamePlayersEditor({ members, values, deltaCents, onChange }: GamePlayersEditorProps) {
+export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, autoBalancedCents, onChange }: GamePlayersEditorProps) {
   return (
     <>
       <Text style={styles.sectionTitle}>Spieler</Text>
       <View style={styles.gameList}>
         {members.map((member) => {
+          const isBank = bankMemberId === member.id;
           const buyIn = values[member.id]?.buyIn ?? '';
           const cashOut = values[member.id]?.cashOut ?? '';
-          const netCents = parseEuroToCents(cashOut) - parseEuroToCents(buyIn);
+          const netCents = isBank ? autoBalancedCents ?? 0 : parseEuroToCents(cashOut) - parseEuroToCents(buyIn);
 
           return (
             <View key={member.id} style={styles.gameRow}>
               <View style={styles.gamePerson}>
                 <Avatar initials={member.initials} avatarUrl={member.avatarUrl} size={38} />
                 <Text style={styles.gameName}>{member.name}</Text>
+                {isBank && <Text style={styles.bankBadge}>Bank</Text>}
               </View>
               <View style={styles.gameInputs}>
-                <MiniMoneyInput
-                  value={buyIn}
-                  placeholder="Buy-in"
-                  onChangeText={(value) => onChange(member.id, { buyIn: value, cashOut })}
-                />
-                <MiniMoneyInput
-                  value={cashOut}
-                  placeholder="Cash-out"
-                  onChangeText={(value) => onChange(member.id, { buyIn, cashOut: value })}
-                />
+                {isBank ? (
+                  <View style={styles.bankAutoBox}>
+                    <Text style={styles.bankAutoText}>automatisch</Text>
+                  </View>
+                ) : (
+                  <>
+                    <MiniMoneyInput
+                      value={buyIn}
+                      placeholder="Buy-in"
+                      onChangeText={(value) => onChange(member.id, { buyIn: value, cashOut })}
+                    />
+                    <MiniMoneyInput
+                      value={cashOut}
+                      placeholder="Cash-out"
+                      onChangeText={(value) => onChange(member.id, { buyIn, cashOut: value })}
+                    />
+                  </>
+                )}
                 <Text
                   style={[
                     styles.netValue,
@@ -98,10 +110,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
+  bankBadge: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '900',
+    marginLeft: 'auto',
+  },
   gameInputs: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
+  },
+  bankAutoBox: {
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    justifyContent: 'center',
+    minHeight: 42,
+    minWidth: 106,
+    paddingHorizontal: 12,
+  },
+  bankAutoText: {
+    color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: '900',
   },
   netValue: {
     fontSize: 14,

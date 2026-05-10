@@ -26,6 +26,9 @@ fun UserEntity.toDomain(): Member =
         applePayContact = applePayContact,
         bankDetails = bankDetails,
         note = note,
+        notificationsEnabled = notificationsEnabled,
+        notificationHour = notificationHour,
+        backgroundRefreshEnabled = backgroundRefreshEnabled,
     )
 
 fun Member.toEntity(passwordHash: String = ""): UserEntity =
@@ -44,6 +47,9 @@ fun Member.toEntity(passwordHash: String = ""): UserEntity =
         applePayContact = applePayContact,
         bankDetails = bankDetails,
         note = note,
+        notificationsEnabled = notificationsEnabled,
+        notificationHour = notificationHour,
+        backgroundRefreshEnabled = backgroundRefreshEnabled,
     )
 
 fun DebtEventEntity.toDomain(): DebtEvent =
@@ -55,6 +61,8 @@ fun DebtEventEntity.toDomain(): DebtEvent =
         description = description,
         createdAt = createdAt,
         lines = lines.map { LedgerLine(memberId = it.memberId, amountCents = it.amountCents) },
+        gameMode = gameMode,
+        bankMemberId = bankMemberId,
     )
 
 fun DebtEvent.toEntity(): DebtEventEntity {
@@ -65,6 +73,8 @@ fun DebtEvent.toEntity(): DebtEventEntity {
         title = title,
         description = description,
         createdAt = createdAt,
+        gameMode = gameMode,
+        bankMemberId = bankMemberId,
     )
     eventEntity.lines = lines.map {
         LedgerLineEntity(memberId = it.memberId, amountCents = it.amountCents, event = eventEntity)

@@ -1,10 +1,15 @@
 package de.interaapps.weowe.debt.dto
 
 import de.interaapps.weowe.debt.domain.DebtEvent
+import de.interaapps.weowe.debt.domain.EventPage
 import de.interaapps.weowe.debt.domain.EventType
+import de.interaapps.weowe.debt.domain.GameHistory
+import de.interaapps.weowe.debt.domain.GameMode
 import de.interaapps.weowe.debt.domain.Group
+import de.interaapps.weowe.debt.domain.GroupStats
 import de.interaapps.weowe.debt.domain.LedgerLine
 import de.interaapps.weowe.debt.domain.Member
+import de.interaapps.weowe.debt.domain.RelationshipHistory
 import de.interaapps.weowe.debt.domain.SettlementRow
 import de.interaapps.weowe.debt.domain.SettlementTransfer
 import de.interaapps.weowe.debt.domain.Summary
@@ -20,9 +25,28 @@ data class DashboardResponse(
     val members: List<Member>,
     val events: List<DebtEvent>,
     val summary: Summary,
+    val stats: GroupStats,
     val owedByMe: List<SettlementRow>,
     val owedToMe: List<SettlementRow>,
     val optimizedTransfers: List<SettlementTransfer>,
+)
+
+data class RelationshipHistoryResponse(
+    val summary: de.interaapps.weowe.debt.domain.RelationshipSummary,
+    val events: List<DebtEvent>,
+)
+
+data class GameHistoryResponse(
+    val leaderboard: List<de.interaapps.weowe.debt.domain.MemberStat>,
+    val events: List<DebtEvent>,
+)
+
+data class EventPageResponse(
+    val items: List<DebtEvent>,
+    val page: Int,
+    val size: Int,
+    val totalCount: Long,
+    val hasMore: Boolean,
 )
 
 data class LoginRequest(
@@ -72,6 +96,8 @@ data class UpsertDebtEventRequest(
     val createdAt: Instant? = null,
     @field:NotEmpty
     val lines: List<LedgerLine>,
+    val gameMode: GameMode? = null,
+    val bankMemberId: String? = null,
 )
 
 data class UpdateMemberRequest(
@@ -87,9 +113,27 @@ data class UpdateMemberRequest(
     val applePayContact: String? = null,
     val bankDetails: String? = null,
     val note: String? = null,
+    val notificationsEnabled: Boolean? = null,
+    val notificationHour: Int? = null,
+    val backgroundRefreshEnabled: Boolean? = null,
 )
 
 data class InviteResponse(
     val groupId: String,
     val inviteLink: String,
 )
+
+fun EventPage.toResponse(): EventPageResponse =
+    EventPageResponse(
+        items = items,
+        page = page,
+        size = size,
+        totalCount = totalCount,
+        hasMore = hasMore,
+    )
+
+fun RelationshipHistory.toResponse(): RelationshipHistoryResponse =
+    RelationshipHistoryResponse(summary = summary, events = events)
+
+fun GameHistory.toResponse(): GameHistoryResponse =
+    GameHistoryResponse(leaderboard = leaderboard, events = events)

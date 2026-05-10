@@ -9,7 +9,7 @@ import { Group, Member } from '@/types/debt';
 
 type TopGroupSelectorProps = {
   groups: Group[];
-  selectedGroup: Group;
+  selectedGroup?: Group | null;
   currentUser: Member;
   visible: boolean;
   onOpen: () => void;
@@ -43,7 +43,7 @@ export function TopGroupSelector({
         <Avatar initials={currentUser.initials} avatarUrl={currentUser.avatarUrl} size={48} />
       </Pressable>
       <Pressable style={({ pressed }) => [styles.groupButton, pressed && styles.pressed]} onPress={onOpen}>
-        <Text style={styles.groupName}>{selectedGroup.name}</Text>
+        <Text style={styles.groupName}>{selectedGroup?.name ?? 'Gruppe waehlen'}</Text>
         <SymbolView
           name={{ ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }}
           size={14}
@@ -71,7 +71,7 @@ export function TopGroupSelector({
                 </Pressable>
               </View>
               {groups.map((group) => {
-                const selected = group.id === selectedGroup.id;
+                const selected = group.id === selectedGroup?.id;
                 return (
                   <Pressable
                     key={group.id}

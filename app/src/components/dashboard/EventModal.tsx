@@ -16,7 +16,7 @@ import {
   normalizeLines,
 } from '@/components/dashboard/event-modal/event-modal-utils';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent, EventType, Member } from '@/types/debt';
+import { DebtEvent, EventType, GameMode, Member } from '@/types/debt';
 import { formatEuro, parseEuroToCents } from '@/utils/debt';
 
 export type EventModalType = EventType;
@@ -62,6 +62,8 @@ export function EventModal({
   const [splitMode, setSplitMode] = useState<'equal' | 'manual'>('equal');
   const [manualShares, setManualShares] = useState<Record<string, string>>({});
   const [gameValues, setGameValues] = useState<Record<string, GamePlayerValue>>({});
+  const [gameMode, setGameMode] = useState<GameMode>('poker');
+  const [bankMemberId, setBankMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -80,6 +82,8 @@ export function EventModal({
     setSplitMode('equal');
     setManualShares({});
     setGameValues(createEmptyGameValues(defaultParticipantIds));
+    setGameMode(initialEvent?.gameMode ?? 'poker');
+    setBankMemberId(initialEvent?.bankMemberId ?? defaultParticipantIds[0] ?? null);
 
     if (!initialEvent) {
       return;
@@ -90,7 +94,9 @@ export function EventModal({
       defaultParticipantIds,
       setAmount,
       setFromMemberId,
+      setBankMemberId,
       setGameValues,
+      setGameMode,
       setPayerId,
       setSelectedParticipantIds,
       setToMemberId,
@@ -105,8 +111,25 @@ export function EventModal({
     setSelectedParticipantIds((current) => (current.includes(payerId) ? current : [payerId, ...current]));
   }, [payerId, type, visible]);
 
+  useEffect(() => {
+    if (!visible || type !== 'game' || gameMode !== 'bank' || !bankMemberId) {
+      return;
+    }
+
+    setSelectedParticipantIds((current) => (current.includes(bankMemberId) ? current : [bankMemberId, ...current]));
+  }, [bankMemberId, gameMode, type, visible]);
+
+  useEffect(() => {
+    if (!visible || type !== 'game' || gameMode !== 'bank' || bankMemberId) {
+      return;
+    }
+
+    setBankMemberId(selectedParticipantIds[0] ?? currentUserId);
+  }, [bankMemberId, currentUserId, gameMode, selectedParticipantIds, type, visible]);
+
   const gameMembers = members.filter((member) => selectedParticipantIds.includes(member.id));
-  const gameLines = gameMembers
+  const nonBankGameMembers = gameMembers.filter((member) => gameMode !== 'bank' || member.id !== bankMemberId);
+  const enteredGameLines = nonBankGameMembers
     .map((member) => ({
       memberId: member.id,
       amountCents:
@@ -114,8 +137,14 @@ export function EventModal({
         parseEuroToCents(gameValues[member.id]?.buyIn ?? ''),
     }))
     .filter((line) => line.amountCents !== 0);
-  const gameDeltaCents = gameLines.reduce((total, line) => total + line.amountCents, 0);
-  const canSave = type !== 'game' || (gameLines.length > 0 && gameDeltaCents === 0);
+  const enteredGameDeltaCents = enteredGameLines.reduce((total, line) => total + line.amountCents, 0);
+  const bankBalanceCents = -enteredGameDeltaCents;
+  const gameLines = normalizeLines([
+    ...enteredGameLines,
+    ...(gameMode === 'bank' && bankMemberId ? [{ memberId: bankMemberId, amountCents: bankBalanceCents }] : []),
+  ]);
+  const gameDeltaCents = gameMode === 'bank' ? 0 : enteredGameDeltaCents;
+  const canSave = type !== 'game' || (gameLines.length > 0 && (gameMode === 'bank' || gameDeltaCents === 0));
 
   async function handleSubmit() {
     const event = buildEvent();
@@ -205,7 +234,12 @@ export function EventModal({
         return null;
       }
 
-      if (gameDeltaCents !== 0) {
+      if (gameMode === 'bank' && !bankMemberId) {
+        Alert.alert('Bank fehlt', 'Bitte waehle aus, welcher Spieler die Bank ist.');
+        return null;
+      }
+
+      if (gameMode !== 'bank' && gameDeltaCents !== 0) {
         Alert.alert('Noch nicht ausgeglichen', 'Einzahlungen und Auszahlungen müssen in Summe 0 ergeben.');
         return null;
       }
@@ -217,9 +251,11 @@ export function EventModal({
         title: title.trim(),
         description: gameLines
           .map((line) => `${getMemberName(line.memberId)} ${formatEuro(line.amountCents, { signed: true })}`)
-          .join(', '),
+          .join(', ') + (gameMode === 'bank' && bankMemberId ? ` · Bank: ${getMemberName(bankMemberId)}` : ''),
         createdAt,
         lines: gameLines,
+        gameMode,
+        bankMemberId,
       };
     }
 
@@ -293,8 +329,13 @@ export function EventModal({
                 selectedParticipantIds={selectedParticipantIds}
                 gameValues={gameValues}
                 gameDeltaCents={gameDeltaCents}
+                gameMode={gameMode}
+                bankMemberId={bankMemberId}
+                bankBalanceCents={bankBalanceCents}
                 setSelectedParticipantIds={setSelectedParticipantIds}
                 setGameValues={setGameValues}
+                setGameMode={setGameMode}
+                setBankMemberId={setBankMemberId}
               />
             )}
           </ScrollView>

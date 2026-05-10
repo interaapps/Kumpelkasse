@@ -10,9 +10,12 @@ import org.springframework.stereotype.Service
 class DashboardService(
     private val store: DebtStore,
     private val calculationService: DebtCalculationService,
+    private val insightsService: InsightsService,
     @Value("\${app.public-base-url:https://kumpelkasse.interaapps.de}")
     private val publicBaseUrl: String = "https://kumpelkasse.interaapps.de",
 ) {
+    private val dashboardPreviewEventCount = 4
+
     fun getDashboard(groupId: String?, currentUserId: String): DashboardResponse {
         val groups = store.getGroupsForMember(currentUserId)
         if (groups.isEmpty()) {
@@ -24,6 +27,11 @@ class DashboardService(
                 members = listOf(store.getMember(currentUserId)),
                 events = emptyList(),
                 summary = Summary(netCents = 0, owedByMeCents = 0, owedToMeCents = 0),
+                stats = de.interaapps.weowe.debt.domain.GroupStats(
+                    totalEvents = 0,
+                    totalVolumeCents = 0,
+                    activeMembers = 0,
+                ),
                 owedByMe = emptyList(),
                 owedToMe = emptyList(),
                 optimizedTransfers = emptyList(),
@@ -35,6 +43,7 @@ class DashboardService(
         val members = store.getMembersForGroup(selectedGroup.id)
         val events = store.getEventsForGroup(selectedGroup.id)
         val calculation = calculationService.calculateSummary(events, members, currentUserId)
+        val stats = insightsService.getGroupStats(selectedGroup.id, currentUserId)
 
         return DashboardResponse(
             currentUserId = currentUserId,
@@ -42,8 +51,9 @@ class DashboardService(
             inviteLink = inviteLinkFor(selectedGroup.id),
             groups = groups,
             members = members,
-            events = events,
+            events = events.take(dashboardPreviewEventCount),
             summary = calculation.summary,
+            stats = stats,
             owedByMe = calculation.owedByMe,
             owedToMe = calculation.owedToMe,
             optimizedTransfers = calculation.optimizedTransfers,

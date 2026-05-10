@@ -1,6 +1,8 @@
 package de.interaapps.weowe.debt.service
 
 import de.interaapps.weowe.debt.domain.DebtEvent
+import de.interaapps.weowe.debt.domain.EventPage
+import de.interaapps.weowe.debt.domain.EventType
 import de.interaapps.weowe.debt.domain.Group
 import de.interaapps.weowe.debt.domain.Member
 import de.interaapps.weowe.debt.dto.CreateGroupRequest
@@ -14,6 +16,7 @@ import de.interaapps.weowe.debt.persistence.UserRepository
 import de.interaapps.weowe.debt.persistence.toDomain
 import de.interaapps.weowe.debt.persistence.toEntity
 import org.springframework.http.HttpStatus
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
@@ -104,6 +107,36 @@ class JpaDebtStore(
         return eventRepository.findByGroupIdOrderByCreatedAtDesc(groupId).map { it.toDomain() }
     }
 
+    @Transactional(readOnly = true)
+    override fun getEventPageForGroup(
+        groupId: String,
+        page: Int,
+        size: Int,
+        query: String?,
+        type: EventType?,
+        memberId: String?,
+        createdAfter: Instant?,
+    ): EventPage {
+        getGroup(groupId)
+        val pageable = PageRequest.of(page, size)
+        val result = eventRepository.searchGroupEvents(
+            groupId = groupId,
+            queryText = query,
+            type = type,
+            memberId = memberId,
+            createdAfter = createdAfter,
+            pageable = pageable,
+        )
+
+        return EventPage(
+            items = result.content.map { it.toDomain() },
+            page = result.number,
+            size = result.size,
+            totalCount = result.totalElements,
+            hasMore = result.hasNext(),
+        )
+    }
+
     @Transactional
     override fun createEvent(request: UpsertDebtEventRequest): DebtEvent {
         val event = request.toEvent(id = request.id ?: "event-${UUID.randomUUID()}")
@@ -123,6 +156,8 @@ class JpaDebtStore(
         existing.title = event.title
         existing.description = event.description
         existing.createdAt = event.createdAt
+        existing.gameMode = event.gameMode
+        existing.bankMemberId = event.bankMemberId
         existing.lines.clear()
         existing.lines += event.lines.map {
             de.interaapps.weowe.debt.persistence.LedgerLineEntity(
@@ -159,6 +194,9 @@ class JpaDebtStore(
         existing.applePayContact = request.applePayContact.blankToNull()
         existing.bankDetails = request.bankDetails.blankToNull()
         existing.note = request.note.blankToNull()
+        existing.notificationsEnabled = request.notificationsEnabled ?: existing.notificationsEnabled
+        existing.notificationHour = request.notificationHour?.coerceIn(0, 23) ?: existing.notificationHour
+        existing.backgroundRefreshEnabled = request.backgroundRefreshEnabled ?: existing.backgroundRefreshEnabled
 
         return userRepository.save(existing).toDomain()
     }
@@ -172,6 +210,8 @@ class JpaDebtStore(
             description = description.blankToNull(),
             createdAt = createdAt ?: Instant.now(),
             lines = lines,
+            gameMode = gameMode,
+            bankMemberId = bankMemberId?.blankToNull(),
         )
 
     private fun validateEvent(event: DebtEvent) {
@@ -197,6 +237,14 @@ class JpaDebtStore(
         val total = event.lines.sumOf { it.amountCents }
         if (total != 0L) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Ledger lines must sum to 0")
+        }
+
+        if (event.type == de.interaapps.weowe.debt.domain.EventType.GAME && event.gameMode == de.interaapps.weowe.debt.domain.GameMode.BANK) {
+            val bankMemberId = event.bankMemberId
+                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank games need a bank member")
+            if (bankMemberId !in knownMemberIds) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown bank member: $bankMemberId")
+            }
         }
     }
 

@@ -152,8 +152,12 @@ class AuthService(
     }
 
     private fun updateUserFromOidc(user: UserEntity, profile: InteraAppsProfile) {
-        user.name = profile.name
-        user.initials = initialsFrom(profile.name)
+        if (user.name.isBlank()) {
+            user.name = profile.name
+        }
+        if (user.initials.isBlank()) {
+            user.initials = initialsFrom(user.name)
+        }
         user.email = profile.email
         user.avatarUrl = profile.picture
     }

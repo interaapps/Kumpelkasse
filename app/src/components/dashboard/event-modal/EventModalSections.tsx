@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { FormField, FormTextInput, MoneyField, SegmentButton, SegmentedControl } from '@/components/dashboard/event-modal/EventModalForm';
 import { GamePlayerValue, GamePlayersEditor } from '@/components/dashboard/event-modal/GamePlayersEditor';
 import { MemberMultiSelect, PersonSelect } from '@/components/dashboard/event-modal/MemberSelect';
-import { EventType, Member } from '@/types/debt';
+import { EventType, GameMode, Member } from '@/types/debt';
 
 type DirectEventFieldsProps = {
   type: EventType;
@@ -134,8 +134,13 @@ type GameEventFieldsProps = {
   selectedParticipantIds: string[];
   gameValues: Record<string, GamePlayerValue>;
   gameDeltaCents: number;
+  gameMode: GameMode;
+  bankMemberId: string | null;
+  bankBalanceCents: number;
   setSelectedParticipantIds: React.Dispatch<React.SetStateAction<string[]>>;
   setGameValues: React.Dispatch<React.SetStateAction<Record<string, GamePlayerValue>>>;
+  setGameMode: (mode: GameMode) => void;
+  setBankMemberId: (memberId: string) => void;
 };
 
 export function GameEventFields({
@@ -144,11 +149,22 @@ export function GameEventFields({
   selectedParticipantIds,
   gameValues,
   gameDeltaCents,
+  gameMode,
+  bankMemberId,
+  bankBalanceCents,
   setSelectedParticipantIds,
   setGameValues,
+  setGameMode,
+  setBankMemberId,
 }: GameEventFieldsProps) {
   return (
     <>
+      <FormField label="Spieltyp">
+        <SegmentedControl>
+          <SegmentButton label="Poker" selected={gameMode === 'poker'} onPress={() => setGameMode('poker')} />
+          <SegmentButton label="Mit Bank" selected={gameMode === 'bank'} onPress={() => setGameMode('bank')} />
+        </SegmentedControl>
+      </FormField>
       <MemberMultiSelect
         label="Mitspieler"
         members={members}
@@ -159,10 +175,28 @@ export function GameEventFields({
           )
         }
       />
+      {gameMode === 'bank' && (
+        <>
+          <PersonSelect
+            label="Wer ist die Bank?"
+            members={gameMembers}
+            selectedId={bankMemberId ?? ''}
+            onSelect={setBankMemberId}
+          />
+          <FormTextInput
+            label="Hinweis"
+            value="Die Bank wird automatisch gegen alle anderen Spieler ausgeglichen."
+            onChangeText={() => {}}
+            editable={false}
+          />
+        </>
+      )}
       <GamePlayersEditor
         members={gameMembers}
         values={gameValues}
         deltaCents={gameDeltaCents}
+        bankMemberId={gameMode === 'bank' ? bankMemberId : null}
+        autoBalancedCents={gameMode === 'bank' ? bankBalanceCents : undefined}
         onChange={(memberId, value) =>
           setGameValues((current) => ({
             ...current,

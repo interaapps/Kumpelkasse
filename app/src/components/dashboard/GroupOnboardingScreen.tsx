@@ -7,10 +7,11 @@ import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme
 type GroupOnboardingScreenProps = {
   userName: string;
   onCancel?: () => void;
+  onSkip?: () => void;
   onCreateGroup: (name: string) => Promise<void>;
 };
 
-export function GroupOnboardingScreen({ userName, onCancel, onCreateGroup }: GroupOnboardingScreenProps) {
+export function GroupOnboardingScreen({ userName, onCancel, onSkip, onCreateGroup }: GroupOnboardingScreenProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
   const [name, setName] = useState('Freundesgruppe');
@@ -59,6 +60,11 @@ export function GroupOnboardingScreen({ userName, onCancel, onCreateGroup }: Gro
           <Pressable style={({ pressed }) => [styles.button, pressed && styles.pressed]} onPress={handleCreate} disabled={loading}>
             {loading ? <ActivityIndicator color={colors.buttonText} /> : <Text style={styles.buttonText}>Gruppe erstellen</Text>}
           </Pressable>
+          {onSkip && (
+            <Pressable style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]} onPress={onSkip}>
+              <Text style={styles.skipText}>Erstmal überspringen</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -134,6 +140,17 @@ function createStyles(colors: DashboardColors) {
     buttonText: {
       color: colors.buttonText,
       fontSize: 16,
+      fontWeight: '900',
+    },
+    skipButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 46,
+      marginTop: 2,
+    },
+    skipText: {
+      color: colors.textMuted,
+      fontSize: 15,
       fontWeight: '900',
     },
     cancelButton: {

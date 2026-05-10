@@ -1,5 +1,5 @@
 import { GamePlayerValue } from '@/components/dashboard/event-modal/GamePlayersEditor';
-import { DebtEvent, EventType, LedgerLine } from '@/types/debt';
+import { DebtEvent, EventType, GameMode, LedgerLine } from '@/types/debt';
 
 export function hydrateFromEvent(
   event: DebtEvent,
@@ -10,6 +10,8 @@ export function hydrateFromEvent(
     setAmount: (value: string) => void;
     setFromMemberId: (value: string) => void;
     setGameValues: (value: Record<string, GamePlayerValue>) => void;
+    setGameMode?: (value: GameMode) => void;
+    setBankMemberId?: (value: string | null) => void;
     setPayerId: (value: string) => void;
     setSelectedParticipantIds: (value: string[]) => void;
     setToMemberId: (value: string) => void;
@@ -46,6 +48,8 @@ export function hydrateFromEvent(
   if (type === 'game') {
     const selectedIds = event.lines.map((line) => line.memberId);
     setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
+    setters.setGameMode?.(event.gameMode ?? 'poker');
+    setters.setBankMemberId?.(event.bankMemberId ?? null);
     setters.setGameValues(
       Object.fromEntries(
         event.lines.map((line) => [

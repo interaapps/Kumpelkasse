@@ -67,20 +67,20 @@ export function LoginScreen({ onLogin, onRegister, onInteraAppsLogin }: LoginScr
       <View style={styles.container}>
         <View style={styles.hero}>
           <Text style={styles.kicker}>Kumpelkasse</Text>
-          <Text style={styles.title}>{mode === 'login' ? 'Willkommen zurück.' : 'Account erstellen.'}</Text>
+          <Text style={styles.title}>{mode === 'login' ? 'Willkommen.' : 'Account erstellen.'}</Text>
           <Text style={styles.subtitle}>
-            {mode === 'login'
-              ? 'Logge dich mit E-Mail und Passwort ein. Deine Session bleibt lokal gespeichert.'
-              : 'Erstelle einmalig deinen Nutzer. Name und Bezahlinfos hängen danach an deinem Profil.'}
+            Kumpelkasse hilft dir dabei, Schulden in Freundesgruppen einfach und übersichtlich zu verwalten.
+
+            Ob gemeinsames Essen, WG-Ausgaben, Urlaub oder Pokerabend – trage ein, wer bezahlt hat, wer beteiligt war und wer wem noch Geld schuldet. Kumpelkasse berechnet automatisch den einfachsten Ausgleich, damit weniger hin und her überwiesen werden muss.
           </Text>
         </View>
 
-        <View style={styles.card}>
+        <View>
           <Pressable
             style={({ pressed }) => [styles.interaAppsButton, pressed && styles.pressed]}
             onPress={handleInteraAppsLogin}
             disabled={loading}>
-            <Text style={styles.interaAppsText}>Mit InteraApps einloggen</Text>
+            <Text style={styles.interaAppsText}>Einloggen</Text>
           </Pressable>
 
         </View>
@@ -187,7 +187,7 @@ function createStyles(colors: DashboardColors) {
     },
     container: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       padding: 24,
     },
     hero: {

@@ -1,4 +1,6 @@
 export type EventType = 'direct' | 'split' | 'single' | 'game' | 'payment';
+export type EventDateRange = 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'THIS_YEAR' | 'ALL';
+export type GameMode = 'poker' | 'bank';
 
 export type LedgerLine = {
   memberId: string;
@@ -13,6 +15,8 @@ export type DebtEvent = {
   description?: string;
   createdAt: string;
   lines: LedgerLine[];
+  gameMode?: GameMode | null;
+  bankMemberId?: string | null;
 };
 
 export type Group = {
@@ -34,6 +38,9 @@ export type Member = {
   applePayContact?: string;
   bankDetails?: string;
   note?: string;
+  notificationsEnabled?: boolean;
+  notificationHour?: number;
+  backgroundRefreshEnabled?: boolean;
 };
 
 export type SettlementRow = {
@@ -73,9 +80,24 @@ export type DashboardResponse = {
   members: Member[];
   events: DebtEvent[];
   summary: Summary;
+  stats: GroupStats;
   owedByMe: SettlementRow[];
   owedToMe: SettlementRow[];
   optimizedTransfers: SettlementTransfer[];
+};
+
+export const EMPTY_GROUP_STATS: GroupStats = {
+  totalEvents: 0,
+  totalVolumeCents: 0,
+  activeMembers: 0,
+  biggestCreditor: null,
+  biggestDebtor: null,
+  mostActiveMember: null,
+  biggestGameWinner: null,
+  biggestGameLoser: null,
+  splitEventCount: 0,
+  paymentEventCount: 0,
+  gameEventCount: 0,
 };
 
 export type LoginResponse = {
@@ -83,3 +105,56 @@ export type LoginResponse = {
   currentUserId: string;
   member: Member;
 };
+
+export type EventPageResponse = {
+  items: DebtEvent[];
+  page: number;
+  size: number;
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type MemberStat = {
+  member: Member;
+  amountCents: number;
+  eventCount: number;
+};
+
+export type GroupStats = {
+  totalEvents: number;
+  totalVolumeCents: number;
+  activeMembers: number;
+  biggestCreditor?: MemberStat | null;
+  biggestDebtor?: MemberStat | null;
+  mostActiveMember?: MemberStat | null;
+  biggestGameWinner?: MemberStat | null;
+  biggestGameLoser?: MemberStat | null;
+  splitEventCount: number;
+  paymentEventCount: number;
+  gameEventCount: number;
+};
+
+export type RelationshipSummary = {
+  otherMember: Member;
+  eventCount: number;
+  netCents: number;
+  youOweCents: number;
+  owesYouCents: number;
+};
+
+export type RelationshipHistory = {
+  summary: RelationshipSummary;
+  events: DebtEvent[];
+};
+
+export type GameHistory = {
+  leaderboard: MemberStat[];
+  events: DebtEvent[];
+};
+
+export function normalizeDashboardResponse(dashboard: DashboardResponse): DashboardResponse {
+  return {
+    ...dashboard,
+    stats: dashboard.stats ?? EMPTY_GROUP_STATS,
+  };
+}

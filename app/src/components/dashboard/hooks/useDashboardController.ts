@@ -16,12 +16,15 @@ import {
   updateEvent,
   updateMember,
 } from '@/api/debt-api';
+import { clearCachedDashboard, loadCachedDashboard, storeCachedDashboard } from '@/api/dashboard-cache';
 import { authorizeWithInteraApps } from '@/api/interaapps-oidc';
 import { setApiSessionToken } from '@/api/client';
 import { clearStoredSessionToken, loadStoredSessionToken, storeSessionToken } from '@/api/session-storage';
+import { syncBackgroundRefreshRegistration } from '@/background/dashboard-background-task';
 import { EventModalType } from '@/components/dashboard/EventModal';
 import { getInviteLink, parseInviteGroupId } from '@/components/dashboard/utils/invite-links';
 import { DashboardResponse, DebtEvent, Member } from '@/types/debt';
+import { syncNotificationPreferences } from '@/notifications/notification-service';
 
 type EventPreset = {
   amountCents?: number;
@@ -41,8 +44,9 @@ export function useDashboardController() {
   const [inviteVisible, setInviteVisible] = useState(false);
   const [groupCreationVisible, setGroupCreationVisible] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
+  const [eventBrowserVisible, setEventBrowserVisible] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<DebtEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<DebtEvent | null>(null);
   const [eventPreset, setEventPreset] = useState<EventPreset | null>(null);
   const [activeModal, setActiveModal] = useState<EventModalType | null>(null);
@@ -61,6 +65,13 @@ export function useDashboardController() {
         }
 
         setApiSessionToken(token);
+        const cachedDashboard = await loadCachedDashboard();
+        if (active && cachedDashboard) {
+          setDashboard(cachedDashboard);
+          setCurrentUserId(cachedDashboard.currentUserId);
+          setSelectedGroupId(cachedDashboard.selectedGroupId);
+          setSelectedMemberId(cachedDashboard.currentUserId);
+        }
         const session = await restoreSession();
         if (active) {
           setCurrentUserId(session.currentUserId);
@@ -69,6 +80,7 @@ export function useDashboardController() {
       } catch {
         setApiSessionToken(null);
         await clearStoredSessionToken();
+        await clearCachedDashboard();
       } finally {
         if (active) {
           setIsRestoringSession(false);
@@ -126,9 +138,7 @@ export function useDashboardController() {
       try {
         const nextDashboard = await fetchDashboard(selectedGroupId);
         if (active) {
-          setDashboard(nextDashboard);
-          setSelectedGroupId(nextDashboard.selectedGroupId);
-          setSelectedMemberId((current) => current ?? nextDashboard.currentUserId);
+          await applyDashboard(nextDashboard);
         }
       } catch {
         if (active) {
@@ -168,9 +178,23 @@ export function useDashboardController() {
       return;
     }
     const nextDashboard = await fetchDashboard(nextGroupId);
+    await applyDashboard(nextDashboard);
+    setErrorMessage(null);
+  }
+
+  async function applyDashboard(nextDashboard: DashboardResponse) {
     setDashboard(nextDashboard);
     setSelectedGroupId(nextDashboard.selectedGroupId);
-    setErrorMessage(null);
+    setSelectedMemberId((current) => current ?? nextDashboard.currentUserId);
+    await storeCachedDashboard(nextDashboard);
+
+    const currentMember = nextDashboard.members.find((member) => member.id === nextDashboard.currentUserId);
+    if (currentMember) {
+      await Promise.allSettled([
+        syncNotificationPreferences(currentMember, nextDashboard),
+        syncBackgroundRefreshRegistration(currentMember.backgroundRefreshEnabled ?? false),
+      ]);
+    }
   }
 
   async function refresh() {
@@ -265,6 +289,8 @@ export function useDashboardController() {
     }
     setApiSessionToken(null);
     await clearStoredSessionToken();
+    await clearCachedDashboard();
+    await syncBackgroundRefreshRegistration(false);
     setCurrentUserId(null);
     setSelectedGroupId(null);
     setDashboard(null);
@@ -274,9 +300,10 @@ export function useDashboardController() {
     setGroupCreationVisible(false);
     setProfileVisible(false);
     setSelectedMemberId(null);
-    setSelectedEventId(null);
+    setSelectedEvent(null);
     setEditingEvent(null);
     setEventPreset(null);
+    setEventBrowserVisible(false);
     setActiveModal(null);
   }
 
@@ -297,7 +324,7 @@ export function useDashboardController() {
   }
 
   function handleEditEvent(event: DebtEvent) {
-    setSelectedEventId(null);
+    setSelectedEvent(null);
     setEditingEvent(event);
     setActiveModal(event.type);
   }
@@ -305,7 +332,7 @@ export function useDashboardController() {
   async function handleDeleteEvent(eventId: string) {
     await deleteEvent(eventId);
     await reloadDashboard();
-    setSelectedEventId(null);
+    setSelectedEvent(null);
   }
 
   async function handleSubmitEvent(event: DebtEvent) {
@@ -339,8 +366,9 @@ export function useDashboardController() {
       isRestoringSession,
       joinPromptGroupId,
       profileVisible,
+      eventBrowserVisible,
       currentUserId,
-      selectedEventId,
+      selectedEvent,
       selectedGroupId,
       selectedMemberId,
     },
@@ -362,13 +390,14 @@ export function useDashboardController() {
       refresh,
       setActiveModal,
       setEditingEvent,
+      setEventBrowserVisible,
       setEventPreset,
       setGroupCreationVisible,
       setGroupSelectorVisible,
       setInviteVisible,
       setJoinPromptGroupId,
       setProfileVisible,
-      setSelectedEventId,
+      setSelectedEvent,
       setSelectedGroupId,
       setSelectedMemberId,
     },
