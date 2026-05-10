@@ -11,6 +11,15 @@ export async function register(email: string, password: string, name: string) {
   return response.data;
 }
 
+export async function loginWithInteraAppsOidc(code: string, redirectUri: string, codeVerifier: string) {
+  const response = await apiClient.post<LoginResponse>('/auth/oidc/interaapps', {
+    code,
+    redirectUri,
+    codeVerifier,
+  });
+  return response.data;
+}
+
 export async function restoreSession() {
   const response = await apiClient.get<LoginResponse>('/auth/session');
   return response.data;

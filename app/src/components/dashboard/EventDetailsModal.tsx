@@ -84,7 +84,7 @@ export function EventDetailsModal({
                   key={line.memberId}
                   style={({ pressed }) => [styles.lineRow, pressed && styles.pressed]}
                   onPress={() => onSelectMember?.(line.memberId)}>
-                  <Avatar initials={member?.initials ?? '?'} size={42} />
+                  <Avatar initials={member?.initials ?? '?'} avatarUrl={member?.avatarUrl} size={42} />
                   <View style={styles.lineText}>
                     <Text style={styles.memberName}>{member?.name ?? 'Unbekannt'}</Text>
                     <Text style={styles.memberMeta}>{line.amountCents >= 0 ? 'bekommt Geld' : 'schuldet Geld'}</Text>

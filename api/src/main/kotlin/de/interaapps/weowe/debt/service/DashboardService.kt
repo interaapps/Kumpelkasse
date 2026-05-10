@@ -3,12 +3,15 @@ package de.interaapps.weowe.debt.service
 import de.interaapps.weowe.debt.dto.DashboardResponse
 import de.interaapps.weowe.debt.dto.InviteResponse
 import de.interaapps.weowe.debt.domain.Summary
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 
 @Service
 class DashboardService(
     private val store: DebtStore,
     private val calculationService: DebtCalculationService,
+    @Value("\${app.public-base-url:https://kumpelkasse.interaapps.de}")
+    private val publicBaseUrl: String = "https://kumpelkasse.interaapps.de",
 ) {
     fun getDashboard(groupId: String?, currentUserId: String): DashboardResponse {
         val groups = store.getGroupsForMember(currentUserId)
@@ -53,5 +56,5 @@ class DashboardService(
     }
 
     private fun inviteLinkFor(groupId: String): String =
-        "https://owe.interaapps.de/invite/$groupId"
+        "${publicBaseUrl.trimEnd('/')}/invite/$groupId"
 }

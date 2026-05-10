@@ -6,6 +6,7 @@ interface DebtGroupRepository : JpaRepository<DebtGroupEntity, String>
 
 interface UserRepository : JpaRepository<UserEntity, String> {
     fun findByEmailIgnoreCase(email: String): UserEntity?
+    fun findByInteraAppsSubject(interaAppsSubject: String): UserEntity?
 }
 
 interface DebtEventRepository : JpaRepository<DebtEventEntity, String> {

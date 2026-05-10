@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 type AvatarProps = {
   initials: string;
+  avatarUrl?: string | null;
   size?: number;
   backgroundColor?: string;
   color?: string;
@@ -9,13 +10,18 @@ type AvatarProps = {
 
 export function Avatar({
   initials,
+  avatarUrl,
   size = 44,
   backgroundColor = '#EAF2EC',
   color = '#184C2F',
 }: AvatarProps) {
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor }]}>
-      <Text style={[styles.initials, { color, fontSize: size * 0.38 }]}>{initials}</Text>
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      ) : (
+        <Text style={[styles.initials, { color, fontSize: size * 0.38 }]}>{initials}</Text>
+      )}
     </View>
   );
 }

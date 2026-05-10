@@ -10,12 +10,14 @@ import {
   joinGroup,
   leaveGroup,
   login,
+  loginWithInteraAppsOidc,
   logout,
   register,
   restoreSession,
   updateEvent,
   updateMember,
 } from '@/api/debt-api';
+import { authorizeWithInteraApps } from '@/api/interaapps-oidc';
 import { setApiSessionToken } from '@/api/client';
 import { clearStoredSessionToken, loadStoredSessionToken, storeSessionToken } from '@/api/session-storage';
 import { DebtOverviewCard } from '@/components/dashboard/DebtOverviewCard';
@@ -224,6 +226,20 @@ function DashboardContent() {
     setSelectedGroupId(null);
   }
 
+  async function handleInteraAppsLogin() {
+    const authorization = await authorizeWithInteraApps();
+    const result = await loginWithInteraAppsOidc(
+      authorization.code,
+      authorization.redirectUri,
+      authorization.codeVerifier,
+    );
+    setApiSessionToken(result.sessionToken);
+    await storeSessionToken(result.sessionToken);
+    setCurrentUserId(result.currentUserId);
+    setSelectedMemberId(result.currentUserId);
+    setSelectedGroupId(null);
+  }
+
   async function handleCreateGroup(name: string) {
     if (!currentUserId) {
       return;
@@ -243,7 +259,7 @@ function DashboardContent() {
   function handleJoinGroupLink(link: string) {
     const groupId = parseInviteGroupId(link);
     if (!groupId) {
-      Alert.alert('Ungültiger Link', 'Bitte füge einen Link wie https://owe.interaapps.de/invite/... ein.');
+      Alert.alert('Ungültiger Link', 'Bitte füge einen Link wie https://kumpelkasse.interaapps.de/invite/... ein.');
       return;
     }
     setJoinPromptGroupId(groupId);
@@ -300,7 +316,13 @@ function DashboardContent() {
   }
 
   if (!currentUserId) {
-    return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} />;
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onInteraAppsLogin={handleInteraAppsLogin}
+      />
+    );
   }
 
   if (!dashboard) {
@@ -358,7 +380,7 @@ function DashboardContent() {
   const sortedEvents = [...events].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
-  const inviteLink = dashboard.inviteLink ?? `https://owe.interaapps.de/invite/${selectedGroup.id}`;
+  const inviteLink = dashboard.inviteLink ?? `https://kumpelkasse.interaapps.de/invite/${selectedGroup.id}`;
 
   function openCreateModal(type: EventModalType) {
     setEditingEvent(null);

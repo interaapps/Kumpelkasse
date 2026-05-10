@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 
 type EventModalHeaderProps = {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   canSave: boolean;
   onClose: () => void;
@@ -21,7 +21,7 @@ export function EventModalHeader({ eyebrow, title, canSave, onClose, onSave }: E
         <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
       </Pressable>
       <View style={styles.headerText}>
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
+        {eyebrow && <Text style={styles.eyebrow}>{eyebrow}</Text>}
         <Text style={styles.title}>{title}</Text>
       </View>
       <Pressable

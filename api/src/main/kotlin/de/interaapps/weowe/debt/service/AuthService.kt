@@ -3,13 +3,20 @@ package de.interaapps.weowe.debt.service
 import de.interaapps.weowe.debt.domain.Member
 import de.interaapps.weowe.debt.dto.LoginRequest
 import de.interaapps.weowe.debt.dto.LoginResponse
+import de.interaapps.weowe.debt.dto.OidcLoginRequest
 import de.interaapps.weowe.debt.dto.RegisterRequest
 import de.interaapps.weowe.debt.persistence.UserEntity
 import de.interaapps.weowe.debt.persistence.UserRepository
 import de.interaapps.weowe.debt.persistence.UserSessionEntity
 import de.interaapps.weowe.debt.persistence.UserSessionRepository
 import de.interaapps.weowe.debt.persistence.toDomain
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.springframework.http.HttpStatus
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
@@ -25,6 +32,7 @@ data class AuthSession(
 interface AuthFacade {
     fun login(request: LoginRequest): LoginResponse
     fun register(request: RegisterRequest): LoginResponse
+    fun loginWithInteraApps(request: OidcLoginRequest): LoginResponse
     fun logout(token: String)
     fun getSession(token: String): LoginResponse
     fun requireSession(token: String): AuthSession
@@ -36,8 +44,16 @@ class AuthService(
     private val userRepository: UserRepository,
     private val sessionRepository: UserSessionRepository,
     private val passwordService: PasswordService,
+    private val objectMapper: ObjectMapper,
+    @Value("\${interaapps.oidc.client-id:weowe}")
+    private val interaAppsClientId: String,
+    @Value("\${interaapps.oidc.client-secret:}")
+    private val interaAppsClientSecret: String,
 ) : AuthFacade {
-    private val sessionDuration: Duration = Duration.ofDays(30)
+    private val sessionDuration: Duration = Duration.ofDays(90)
+    private val http = OkHttpClient()
+    private val tokenEndpoint = "https://accounts.interaapps.de/api/v2/authorization/oauth2/access_token"
+    private val userInfoEndpoint = "https://accounts.interaapps.de/api/v2/oidc/userinfo"
 
     @Transactional
     override fun login(request: LoginRequest): LoginResponse {
@@ -64,6 +80,39 @@ class AuthService(
         }
 
         return createSession(createUser(email, name, password))
+    }
+
+    @Transactional
+    override fun loginWithInteraApps(request: OidcLoginRequest): LoginResponse {
+        val tokenResponse = exchangeAuthorizationCode(request)
+        val profile = fetchUserInfo(tokenResponse.accessToken)
+
+        val existingBySubject = userRepository.findByInteraAppsSubject(profile.subject)
+        if (existingBySubject != null) {
+            updateUserFromOidc(existingBySubject, profile)
+            return createSession(userRepository.save(existingBySubject))
+        }
+
+        val existingByEmail = userRepository.findByEmailIgnoreCase(profile.email)
+        if (existingByEmail != null) {
+            existingByEmail.interaAppsSubject = profile.subject
+            updateUserFromOidc(existingByEmail, profile)
+            return createSession(userRepository.save(existingByEmail))
+        }
+
+        return createSession(
+            userRepository.save(
+                UserEntity(
+                    id = "user-${UUID.randomUUID()}",
+                    name = profile.name,
+                    initials = initialsFrom(profile.name),
+                    email = profile.email,
+                    passwordHash = "oidc:${UUID.randomUUID()}",
+                    interaAppsSubject = profile.subject,
+                    avatarUrl = profile.picture,
+                ),
+            ),
+        )
     }
 
     @Transactional
@@ -100,6 +149,64 @@ class AuthService(
                 passwordHash = passwordService.hash(password),
             ),
         )
+    }
+
+    private fun updateUserFromOidc(user: UserEntity, profile: InteraAppsProfile) {
+        user.name = profile.name
+        user.initials = initialsFrom(profile.name)
+        user.email = profile.email
+        user.avatarUrl = profile.picture
+    }
+
+    private fun exchangeAuthorizationCode(request: OidcLoginRequest): InteraAppsTokenResponse {
+        val formBuilder = FormBody.Builder()
+            .add("grant_type", "authorization_code")
+            .add("client_id", interaAppsClientId)
+            .add("code", request.code)
+            .add("redirect_uri", request.redirectUri)
+            .add("code_verifier", request.codeVerifier)
+
+        if (interaAppsClientSecret.isNotBlank()) {
+            formBuilder.add("client_secret", interaAppsClientSecret)
+        }
+
+        val httpRequest = Request.Builder()
+            .url(tokenEndpoint)
+            .post(formBuilder.build())
+            .build()
+
+        http.newCall(httpRequest).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "OIDC token exchange failed")
+            }
+
+            val json = objectMapper.readTree(body)
+            val accessToken = json["access_token"]?.asText()?.takeIf { it.isNotBlank() }
+                ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "OIDC access token missing")
+            return InteraAppsTokenResponse(accessToken = accessToken)
+        }
+    }
+
+    private fun fetchUserInfo(accessToken: String): InteraAppsProfile {
+        val httpRequest = Request.Builder()
+            .url(userInfoEndpoint)
+            .header("Authorization", "Bearer $accessToken")
+            .build()
+
+        http.newCall(httpRequest).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "OIDC userinfo failed")
+            }
+
+            val json = objectMapper.readTree(body)
+            val subject = json.requiredText("sub", "OIDC subject missing")
+            val email = json.requiredText("email", "OIDC email missing").lowercase()
+            val name = json["name"]?.asText()?.takeIf { it.isNotBlank() } ?: email.substringBefore("@")
+            val picture = json["picture"]?.asText()?.takeIf { it.isNotBlank() }
+            return InteraAppsProfile(subject = subject, email = email, name = name, picture = picture)
+        }
     }
 
     private fun createSession(user: UserEntity): LoginResponse {
@@ -141,4 +248,19 @@ class AuthService(
             .ifBlank { "?" }
 
     private fun unauthorized(): Nothing = throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session")
+
+    private fun JsonNode.requiredText(field: String, message: String): String =
+        this[field]?.asText()?.takeIf { it.isNotBlank() }
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, message)
 }
+
+private data class InteraAppsTokenResponse(
+    val accessToken: String,
+)
+
+private data class InteraAppsProfile(
+    val subject: String,
+    val email: String,
+    val name: String,
+    val picture: String?,
+)

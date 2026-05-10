@@ -41,6 +41,15 @@ data class RegisterRequest(
     val name: String,
 )
 
+data class OidcLoginRequest(
+    @field:NotBlank
+    val code: String,
+    @field:NotBlank
+    val redirectUri: String,
+    @field:NotBlank
+    val codeVerifier: String,
+)
+
 data class LoginResponse(
     val sessionToken: String,
     val currentUserId: String,

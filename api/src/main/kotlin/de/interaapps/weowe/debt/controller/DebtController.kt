@@ -10,6 +10,7 @@ import de.interaapps.weowe.debt.dto.DashboardResponse
 import de.interaapps.weowe.debt.dto.InviteResponse
 import de.interaapps.weowe.debt.dto.LoginRequest
 import de.interaapps.weowe.debt.dto.LoginResponse
+import de.interaapps.weowe.debt.dto.OidcLoginRequest
 import de.interaapps.weowe.debt.dto.RegisterRequest
 import de.interaapps.weowe.debt.dto.UpdateMemberRequest
 import de.interaapps.weowe.debt.dto.UpsertDebtEventRequest
@@ -43,6 +44,10 @@ class DebtController(
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
     fun register(@Valid @RequestBody request: RegisterRequest): LoginResponse = auth.register(request)
+
+    @PostMapping("/auth/oidc/interaapps")
+    fun loginWithInteraApps(@Valid @RequestBody request: OidcLoginRequest): LoginResponse =
+        auth.loginWithInteraApps(request)
 
     @GetMapping("/auth/session")
     fun getSession(

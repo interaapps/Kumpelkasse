@@ -237,7 +237,6 @@ export function EventModal({
           behavior={Platform.select({ ios: 'padding', default: undefined })}
           style={styles.keyboardView}>
           <EventModalHeader
-            eyebrow={getModalEyebrow(type, Boolean(initialEvent))}
             title={getModalTitle(type, Boolean(initialEvent))}
             canSave={canSave}
             onClose={onClose}
@@ -452,15 +451,15 @@ function getModalTitle(type: EventModalType, editing: boolean) {
 
   switch (type) {
     case 'direct':
-      return 'Schuld erstellen';
+      return 'Erstellen';
     case 'split':
       return 'Split-Ausgabe';
     case 'single':
-      return 'Einzeln eintragen';
+      return 'Einzeln';
     case 'game':
       return 'Game erfassen';
     case 'payment':
-      return 'Zahlung eintragen';
+      return 'Zahlung';
   }
 }
 

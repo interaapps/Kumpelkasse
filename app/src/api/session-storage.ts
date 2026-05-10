@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const SESSION_TOKEN_KEY = 'weowe.sessionToken';
+const SESSION_TOKEN_KEY = 'kumpelkasse.sessionToken';
 
 export async function loadStoredSessionToken() {
   if (Platform.OS === 'web') {

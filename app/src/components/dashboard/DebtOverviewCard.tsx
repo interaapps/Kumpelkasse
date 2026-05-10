@@ -90,15 +90,16 @@ function OptimizedTransfers({
             key={`${transfer.from.id}-${transfer.to.id}-${transfer.amountCents}`}
             style={({ pressed }) => [styles.transferRow, pressed && styles.pressed]}
             onPress={() => onSelectTransfer(transfer)}>
-            <View style={styles.transferPerson}>
-              <Avatar initials={transfer.from.initials} size={34} backgroundColor={`${colors.negative}22`} color={colors.negative} />
-              <Text style={styles.transferName}>{transfer.from.name}</Text>
+            <View style={styles.optimizedRowAvatars}>
+              <View style={styles.transferPerson}>
+                <Avatar initials={transfer.from.initials} avatarUrl={transfer.from.avatarUrl} size={34} backgroundColor={`${colors.negative}22`} color={colors.negative} />
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+              <View style={styles.transferPerson}>
+                <Avatar initials={transfer.to.initials} avatarUrl={transfer.to.avatarUrl} size={34} backgroundColor={`${colors.positive}22`} color={colors.positive} />
+              </View>
             </View>
-            <Text style={styles.transferArrow}>→</Text>
-            <View style={styles.transferPerson}>
-              <Avatar initials={transfer.to.initials} size={34} backgroundColor={`${colors.positive}22`} color={colors.positive} />
-              <Text style={styles.transferName}>{transfer.to.name}</Text>
-            </View>
+
             <Text style={styles.amount}>{formatEuro(transfer.amountCents)}</Text>
           </Pressable>
         ))
@@ -129,9 +130,8 @@ function TransferExplanationModal({
       <SafeAreaView style={styles.modalSafeArea} edges={['top', 'bottom']}>
         <View style={styles.modalHeader}>
           <View>
-            <Text style={styles.modalEyebrow}>Optimierung erklärt</Text>
             <Text style={styles.modalTitle}>
-              {transfer.from.name} zahlt {transfer.to.name}
+              Optimierung erklärt
             </Text>
           </View>
           <Pressable style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} onPress={onClose}>
@@ -161,7 +161,7 @@ function TransferExplanationModal({
             <Text style={styles.formulaTitle}>Aus diesen Events</Text>
             {transfer.explanationLines.map((line) => (
               <View key={`${line.eventId}-${line.member.id}-${line.amountCents}`} style={styles.explanationRow}>
-                <Avatar initials={line.member.initials} size={34} />
+                <Avatar initials={line.member.initials} avatarUrl={line.member.avatarUrl} size={34} />
                 <View style={styles.explanationRowText}>
                   <Text style={styles.explanationEvent}>{line.eventTitle}</Text>
                   <Text style={styles.explanationMember}>{line.member.name}</Text>
@@ -215,6 +215,7 @@ function DebtSection({
             onPress={() => onSelectMember?.(row.member.id)}>
             <Avatar
                 initials={row.member.initials}
+                avatarUrl={row.member.avatarUrl}
                 size={42}
               backgroundColor={tone === 'positive' ? `${colors.positive}22` : `${colors.negative}22`}
               color={tone === 'positive' ? colors.positive : colors.negative}
@@ -276,6 +277,7 @@ function createStyles(colors: DashboardColors) {
   transferRow: {
     alignItems: 'center',
     borderRadius: 18,
+    justifyContent: 'space-between',
     flexDirection: 'row',
     gap: 8,
     minHeight: 48,
@@ -449,5 +451,10 @@ function createStyles(colors: DashboardColors) {
     fontSize: 15,
     fontWeight: '900',
   },
+  optimizedRowAvatars: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center'
+  }
   });
 }

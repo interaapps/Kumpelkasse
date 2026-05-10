@@ -13,6 +13,7 @@ import de.interaapps.weowe.debt.dto.UpsertDebtEventRequest
 import de.interaapps.weowe.debt.dto.CreateGroupRequest
 import de.interaapps.weowe.debt.dto.LoginRequest
 import de.interaapps.weowe.debt.dto.LoginResponse
+import de.interaapps.weowe.debt.dto.OidcLoginRequest
 import de.interaapps.weowe.debt.dto.RegisterRequest
 import de.interaapps.weowe.debt.service.AuthSession
 import de.interaapps.weowe.debt.service.AuthFacade
@@ -159,6 +160,9 @@ private class FakeAuth : AuthFacade {
         LoginResponse(sessionToken = "test-session", currentUserId = julian.id, member = julian)
 
     override fun register(request: RegisterRequest): LoginResponse =
+        LoginResponse(sessionToken = "test-session", currentUserId = julian.id, member = julian)
+
+    override fun loginWithInteraApps(request: OidcLoginRequest): LoginResponse =
         LoginResponse(sessionToken = "test-session", currentUserId = julian.id, member = julian)
 
     override fun logout(token: String) = Unit

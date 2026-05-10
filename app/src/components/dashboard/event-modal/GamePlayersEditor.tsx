@@ -31,7 +31,7 @@ export function GamePlayersEditor({ members, values, deltaCents, onChange }: Gam
           return (
             <View key={member.id} style={styles.gameRow}>
               <View style={styles.gamePerson}>
-                <Avatar initials={member.initials} size={38} />
+                <Avatar initials={member.initials} avatarUrl={member.avatarUrl} size={38} />
                 <Text style={styles.gameName}>{member.name}</Text>
               </View>
               <View style={styles.gameInputs}>

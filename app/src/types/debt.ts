@@ -25,6 +25,7 @@ export type Member = {
   name: string;
   initials: string;
   email?: string;
+  avatarUrl?: string;
   paypalUrl?: string;
   cashAppTag?: string;
   venmoHandle?: string;

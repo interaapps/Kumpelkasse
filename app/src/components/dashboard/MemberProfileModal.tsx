@@ -71,7 +71,6 @@ export function MemberProfileModal({
             <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor="#111827" />
           </Pressable>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>{isOwnProfile ? 'Mein Profil' : 'Nutzer-Info'}</Text>
             <Text style={styles.title}>{member.name}</Text>
           </View>
           {isOwnProfile && (
@@ -83,7 +82,7 @@ export function MemberProfileModal({
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <View style={styles.profileCard}>
-            <Avatar initials={draft.initials} size={78} />
+            <Avatar initials={draft.initials} avatarUrl={draft.avatarUrl} size={78} />
             <Text style={styles.profileName}>{draft.name}</Text>
             <Text style={styles.profileMeta}>
               {isOwnProfile ? 'Zahlungsinfos lokal bearbeiten' : 'Kontakt- und Zahlungsinfos'}
@@ -200,7 +199,7 @@ function PaymentInfoCards({ member }: { member: Member }) {
   return (
     <View style={styles.cardStack}>
       <Text style={styles.sectionTitle}>Zahlungsarten</Text>
-      {cards.map((card) => (
+      {cards.filter(c => c.value).map((card) => (
         <PaymentInfoCard key={card.label} label={card.label} value={card.value} action={card.action} />
       ))}
       {member.note && <PaymentInfoCard label="Notiz" value={member.note} />}

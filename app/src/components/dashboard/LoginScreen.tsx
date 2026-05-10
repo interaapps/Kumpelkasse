@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
@@ -8,9 +8,10 @@ import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme
 type LoginScreenProps = {
   onLogin: (email: string, password: string) => Promise<void>;
   onRegister: (email: string, password: string, name: string) => Promise<void>;
+  onInteraAppsLogin: () => Promise<void>;
 };
 
-export function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
+export function LoginScreen({ onLogin, onRegister, onInteraAppsLogin }: LoginScreenProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -49,11 +50,26 @@ export function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
     }
   }
 
+  async function handleInteraAppsLogin() {
+    setLoading(true);
+    setError(null);
+    try {
+      await onInteraAppsLogin();
+    } catch {
+      setError('InteraApps Login fehlgeschlagen oder abgebrochen.');
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    handleInteraAppsLogin()
+  })
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.kicker}>Wir schulden</Text>
+          <Text style={styles.kicker}>Kumpelkasse</Text>
           <Text style={styles.title}>{mode === 'login' ? 'Willkommen zurück.' : 'Account erstellen.'}</Text>
           <Text style={styles.subtitle}>
             {mode === 'login'
@@ -63,6 +79,26 @@ export function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
         </View>
 
         <View style={styles.card}>
+          <Pressable
+            style={({ pressed }) => [styles.interaAppsButton, pressed && styles.pressed]}
+            onPress={handleInteraAppsLogin}
+            disabled={loading}>
+            <Text style={styles.interaAppsText}>Mit InteraApps einloggen</Text>
+          </Pressable>
+
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+
+/*
+<View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>oder</Text>
+            <View style={styles.dividerLine} />
+          </View>
           <View style={styles.segment}>
             <Pressable
               style={[styles.segmentButton, mode === 'login' && styles.segmentButtonActive]}
@@ -120,11 +156,7 @@ export function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
               <Text style={styles.buttonText}>{mode === 'login' ? 'Einloggen' : 'Account erstellen'}</Text>
             )}
           </Pressable>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
+ */
 
 function getAuthErrorMessage(error: unknown, mode: 'login' | 'register') {
   if (!axios.isAxiosError(error)) {
@@ -191,6 +223,35 @@ function createStyles(colors: DashboardColors) {
       borderRadius: 30,
       gap: 10,
       padding: 20,
+    },
+    interaAppsButton: {
+      alignItems: 'center',
+      backgroundColor: colors.button,
+      borderRadius: 999,
+      justifyContent: 'center',
+      minHeight: 54,
+    },
+    interaAppsText: {
+      color: colors.buttonText,
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    dividerRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+      marginVertical: 2,
+    },
+    dividerLine: {
+      backgroundColor: colors.border,
+      flex: 1,
+      height: 1,
+    },
+    dividerText: {
+      color: colors.textSubtle,
+      fontSize: 12,
+      fontWeight: '900',
+      textTransform: 'uppercase',
     },
     segment: {
       backgroundColor: colors.cardMuted,

@@ -33,6 +33,7 @@ export function PersonSelect({ label, members, selectedId, onSelect }: PersonSel
             onPress={() => onSelect(member.id)}>
             <Avatar
               initials={member.initials}
+              avatarUrl={member.avatarUrl}
               size={32}
               backgroundColor={selectedId === member.id ? '#FFFFFF' : '#E9ECEF'}
               color={selectedId === member.id ? '#14532D' : '#475467'}
@@ -69,6 +70,7 @@ export function MemberMultiSelect({
               onPress={() => onToggle(member.id)}>
               <Avatar
                 initials={member.initials}
+                avatarUrl={member.avatarUrl}
                 size={34}
                 backgroundColor={selected ? '#FFFFFF' : '#EEF1F4'}
                 color={selected ? '#14532D' : '#475467'}

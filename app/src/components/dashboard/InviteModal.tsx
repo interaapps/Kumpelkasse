@@ -18,7 +18,7 @@ type InviteModalProps = {
 export function InviteModal({ visible, group, inviteLink, members, onClose, onLeaveGroup }: InviteModalProps) {
   async function handleShare() {
     await Share.share({
-      message: `Komm in meine Gruppe "${group.name}" bei Wir schulden: ${inviteLink}`,
+      message: `Komm in meine Gruppe "${group.name}" bei Kumpelkasse: ${inviteLink}`,
       url: inviteLink,
     });
   }
@@ -82,7 +82,7 @@ export function InviteModal({ visible, group, inviteLink, members, onClose, onLe
             <Text style={styles.linkLabel}>Mitglieder</Text>
             {members.map((member) => (
               <View key={member.id} style={styles.memberRow}>
-                <Avatar initials={member.initials} size={38} />
+                <Avatar initials={member.initials} avatarUrl={member.avatarUrl} size={38} />
                 <View style={styles.memberText}>
                   <Text style={styles.memberName}>{member.name}</Text>
                   {member.email && <Text style={styles.memberEmail}>{member.email}</Text>}

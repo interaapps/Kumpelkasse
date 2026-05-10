@@ -40,7 +40,7 @@ export function TopGroupSelector({
   return (
     <View style={styles.container}>
       <Pressable style={({ pressed }) => pressed && styles.pressed} onPress={onOpenProfile}>
-        <Avatar initials={currentUser.initials} size={48} />
+        <Avatar initials={currentUser.initials} avatarUrl={currentUser.avatarUrl} size={48} />
       </Pressable>
       <Pressable style={({ pressed }) => [styles.groupButton, pressed && styles.pressed]} onPress={onOpen}>
         <Text style={styles.groupName}>{selectedGroup.name}</Text>
@@ -139,7 +139,7 @@ function JoinByLinkForm({
       <TextInput
         value={link}
         onChangeText={setLink}
-        placeholder="https://owe.interaapps.de/invite/..."
+        placeholder="https://kumpelkasse.interaapps.de/invite/..."
         placeholderTextColor={colors.textSubtle}
         autoCapitalize="none"
         style={styles.joinInput}

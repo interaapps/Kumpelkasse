@@ -9,6 +9,10 @@ function getDefaultBaseUrl() {
     return `http://${expoHost}:8080/api`;
   }
 
+  if (!__DEV__) {
+    return 'https://kumpelkasse.interaapps.de/api';
+  }
+
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:8080/api';
   }
@@ -46,7 +50,10 @@ export function setApiSessionToken(token: string | null) {
 }
 
 apiClient.interceptors.request.use((config) => {
-  const isAuthMutation = config.url === '/auth/login' || config.url === '/auth/register';
+  const isAuthMutation =
+    config.url === '/auth/login' ||
+    config.url === '/auth/register' ||
+    config.url === '/auth/oidc/interaapps';
   if (sessionToken && !isAuthMutation) {
     config.headers.set('Authorization', `Bearer ${sessionToken}`);
   }

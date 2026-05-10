@@ -13,7 +13,9 @@ class BearerAuthFilter(
     private val auth: AuthFacade,
 ) : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.servletPath == "/api/auth/login" || request.servletPath == "/api/auth/register"
+        request.servletPath == "/api/auth/login" ||
+            request.servletPath == "/api/auth/register" ||
+            request.servletPath == "/api/auth/oidc/interaapps"
 
     override fun doFilterInternal(
         request: HttpServletRequest,

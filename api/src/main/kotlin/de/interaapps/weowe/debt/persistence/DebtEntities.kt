@@ -27,7 +27,13 @@ class DebtGroupEntity(
 )
 
 @Entity
-@Table(name = "users", uniqueConstraints = [UniqueConstraint(name = "uk_users_email", columnNames = ["email"])])
+@Table(
+    name = "users",
+    uniqueConstraints = [
+        UniqueConstraint(name = "uk_users_email", columnNames = ["email"]),
+        UniqueConstraint(name = "uk_users_interaapps_subject", columnNames = ["interaapps_subject"]),
+    ],
+)
 class UserEntity(
     @Id
     var id: String = "",
@@ -39,6 +45,9 @@ class UserEntity(
     var email: String = "",
     @Column(nullable = false, length = 512)
     var passwordHash: String = "",
+    @Column(name = "interaapps_subject")
+    var interaAppsSubject: String? = null,
+    var avatarUrl: String? = null,
     var paypalUrl: String? = null,
     var cashAppTag: String? = null,
     var venmoHandle: String? = null,

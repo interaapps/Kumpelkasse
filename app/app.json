@@ -1,19 +1,21 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "Kumpelkasse",
+    "slug": "kumpelkasse",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "owe",
+    "scheme": "kumpelkasse",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "de.interaapps.kumpelkasse",
       "icon": "./assets/expo.icon",
       "associatedDomains": [
-        "applinks:owe.interaapps.de"
+        "applinks:kumpelkasse.interaapps.de"
       ]
     },
     "android": {
+      "package": "de.interaapps.kumpelkasse",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -21,7 +23,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "owe.interaapps.de",
+              "host": "kumpelkasse.interaapps.de",
               "pathPrefix": "/invite"
             }
           ],
@@ -59,6 +61,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "54aa1422-d8cb-454d-8423-640787fb058d"
+      }
     }
   }
 }
