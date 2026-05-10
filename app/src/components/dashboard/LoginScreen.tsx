@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
@@ -61,9 +61,6 @@ export function LoginScreen({ onLogin, onRegister, onInteraAppsLogin }: LoginScr
       setLoading(false);
     }
   }
-  useEffect(() => {
-    handleInteraAppsLogin()
-  })
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -12,7 +12,10 @@
       "icon": "./assets/expo.icon",
       "associatedDomains": [
         "applinks:kumpelkasse.interaapps.de"
-      ]
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "de.interaapps.kumpelkasse",

@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  FormField,
-  FormTextInput,
-  MoneyField,
-  SegmentButton,
-  SegmentedControl,
-} from '@/components/dashboard/event-modal/EventModalForm';
+import { FormTextInput } from '@/components/dashboard/event-modal/EventModalForm';
 import { EventModalHeader } from '@/components/dashboard/event-modal/EventModalHeader';
+import { type GamePlayerValue } from '@/components/dashboard/event-modal/GamePlayersEditor';
+import { DirectEventFields, GameEventFields, SplitEventFields } from '@/components/dashboard/event-modal/EventModalSections';
 import {
-  GamePlayersEditor,
-  type GamePlayerValue,
-} from '@/components/dashboard/event-modal/GamePlayersEditor';
-import { MemberMultiSelect, PersonSelect } from '@/components/dashboard/event-modal/MemberSelect';
+  centsToInput,
+  createEmptyGameValues,
+  createEqualShares,
+  getDefaultTitle,
+  getModalTitle,
+  hydrateFromEvent,
+  normalizeLines,
+} from '@/components/dashboard/event-modal/event-modal-utils';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent, EventType, LedgerLine, Member } from '@/types/debt';
+import { DebtEvent, EventType, Member } from '@/types/debt';
 import { formatEuro, parseEuroToCents } from '@/utils/debt';
 
 export type EventModalType = EventType;
@@ -255,254 +255,53 @@ export function EventModal({
             />
 
             {(type === 'direct' || type === 'single' || type === 'payment') && (
-              <>
-                <PersonSelect
-                  label={type === 'payment' ? 'Bezahlt von' : type === 'single' ? 'Person schuldet' : 'Von Person'}
-                  members={members}
-                  selectedId={fromMemberId}
-                  onSelect={setFromMemberId}
-                />
-                <PersonSelect
-                  label={type === 'payment' ? 'Bezahlt an' : type === 'single' ? 'Person bekommt' : 'An Person'}
-                  members={members}
-                  selectedId={toMemberId}
-                  onSelect={setToMemberId}
-                />
-                <MoneyField value={amount} onChangeText={setAmount} label="Betrag" />
-                {(type === 'direct' || type === 'payment') && (
-                  <FormTextInput
-                    label="Notiz optional"
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="Wofür war es?"
-                    multiline
-                  />
-                )}
-              </>
+              <DirectEventFields
+                type={type}
+                members={members}
+                fromMemberId={fromMemberId}
+                toMemberId={toMemberId}
+                amount={amount}
+                note={note}
+                setFromMemberId={setFromMemberId}
+                setToMemberId={setToMemberId}
+                setAmount={setAmount}
+                setNote={setNote}
+              />
             )}
 
             {type === 'split' && (
-              <>
-                <PersonSelect
-                  label="Bezahlt von"
-                  members={members}
-                  selectedId={payerId}
-                  onSelect={(memberId) => {
-                    setPayerId(memberId);
-                    setSelectedParticipantIds((current) => Array.from(new Set([memberId, ...current])));
-                  }}
-                />
-                <MoneyField value={amount} onChangeText={setAmount} label="Gesamtbetrag" />
-                <FormField label="Split-Modus">
-                  <SegmentedControl>
-                    <SegmentButton label="gleichmäßig" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} />
-                    <SegmentButton label="manuell" selected={splitMode === 'manual'} onPress={() => setSplitMode('manual')} />
-                  </SegmentedControl>
-                </FormField>
-                <MemberMultiSelect
-                  members={members}
-                  selectedIds={selectedParticipantIds}
-                  onToggle={(memberId) =>
-                    setSelectedParticipantIds((current) => {
-                      if (memberId === payerId) {
-                        return current;
-                      }
-
-                      return current.includes(memberId)
-                        ? current.filter((id) => id !== memberId)
-                        : [...current, memberId];
-                    })
-                  }
-                />
-                {splitMode === 'manual' && (
-                  <View style={styles.manualList}>
-                    {selectedParticipantIds.map((memberId) => (
-                      <MoneyField
-                        key={memberId}
-                        value={manualShares[memberId] ?? ''}
-                        onChangeText={(value) => setManualShares((current) => ({ ...current, [memberId]: value }))}
-                        label={getMemberName(memberId)}
-                      />
-                    ))}
-                  </View>
-                )}
-              </>
+              <SplitEventFields
+                members={members}
+                payerId={payerId}
+                amount={amount}
+                selectedParticipantIds={selectedParticipantIds}
+                splitMode={splitMode}
+                manualShares={manualShares}
+                getMemberName={getMemberName}
+                setPayerId={setPayerId}
+                setAmount={setAmount}
+                setSelectedParticipantIds={setSelectedParticipantIds}
+                setSplitMode={setSplitMode}
+                setManualShares={setManualShares}
+              />
             )}
 
             {type === 'game' && (
-              <>
-                <MemberMultiSelect
-                  label="Mitspieler"
-                  members={members}
-                  selectedIds={selectedParticipantIds}
-                  onToggle={(memberId) =>
-                    setSelectedParticipantIds((current) =>
-                      current.includes(memberId)
-                        ? current.filter((id) => id !== memberId)
-                        : [...current, memberId],
-                    )
-                  }
-                />
-                <GamePlayersEditor
-                  members={gameMembers}
-                  values={gameValues}
-                  deltaCents={gameDeltaCents}
-                  onChange={(memberId, value) =>
-                    setGameValues((current) => ({
-                      ...current,
-                      [memberId]: value,
-                    }))
-                  }
-                />
-              </>
+              <GameEventFields
+                members={members}
+                gameMembers={gameMembers}
+                selectedParticipantIds={selectedParticipantIds}
+                gameValues={gameValues}
+                gameDeltaCents={gameDeltaCents}
+                setSelectedParticipantIds={setSelectedParticipantIds}
+                setGameValues={setGameValues}
+              />
             )}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
-}
-
-function hydrateFromEvent(
-  event: DebtEvent,
-  type: EventModalType,
-  setters: {
-    currentUserId: string;
-    defaultParticipantIds: string[];
-    setAmount: (value: string) => void;
-    setFromMemberId: (value: string) => void;
-    setGameValues: (value: Record<string, GamePlayerValue>) => void;
-    setPayerId: (value: string) => void;
-    setSelectedParticipantIds: (value: string[]) => void;
-    setToMemberId: (value: string) => void;
-  },
-) {
-  if (type === 'direct' || type === 'single' || type === 'payment') {
-    const fromLine =
-      type === 'payment'
-        ? event.lines.find((line) => line.amountCents > 0)
-        : event.lines.find((line) => line.amountCents < 0);
-    const toLine =
-      type === 'payment'
-        ? event.lines.find((line) => line.amountCents < 0)
-        : event.lines.find((line) => line.amountCents > 0);
-    setters.setFromMemberId(fromLine?.memberId ?? setters.currentUserId);
-    setters.setToMemberId(toLine?.memberId ?? setters.currentUserId);
-    setters.setAmount(centsToInput(Math.abs(fromLine?.amountCents ?? toLine?.amountCents ?? 0)));
-    return;
-  }
-
-  if (type === 'split') {
-    const positiveLine = [...event.lines]
-      .filter((line) => line.amountCents > 0)
-      .sort((a, b) => b.amountCents - a.amountCents)[0];
-    const participantIds = event.lines.filter((line) => line.amountCents < 0).map((line) => line.memberId);
-    const selectedIds = positiveLine ? Array.from(new Set([positiveLine.memberId, ...participantIds])) : participantIds;
-
-    setters.setPayerId(positiveLine?.memberId ?? setters.currentUserId);
-    setters.setAmount(centsToInput(event.lines.filter((line) => line.amountCents > 0).reduce((total, line) => total + line.amountCents, 0)));
-    setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
-    return;
-  }
-
-  if (type === 'game') {
-    const selectedIds = event.lines.map((line) => line.memberId);
-    setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
-    setters.setGameValues(
-      Object.fromEntries(
-        event.lines.map((line) => [
-          line.memberId,
-          line.amountCents >= 0
-            ? { buyIn: '', cashOut: centsToInput(line.amountCents) }
-            : { buyIn: centsToInput(Math.abs(line.amountCents)), cashOut: '' },
-        ]),
-      ),
-    );
-  }
-}
-
-function createEmptyGameValues(memberIds: string[]) {
-  return Object.fromEntries(memberIds.map((memberId) => [memberId, { buyIn: '', cashOut: '' }]));
-}
-
-function centsToInput(cents: number) {
-  return cents > 0 ? String(cents / 100).replace('.', ',') : '';
-}
-
-function getDefaultTitle(type: EventModalType) {
-  switch (type) {
-    case 'direct':
-      return 'Direkte Schuld';
-    case 'split':
-      return 'Gemeinsame Ausgabe';
-    case 'single':
-      return 'Einzel-Ausgabe';
-    case 'game':
-      return 'Pokerabend';
-    case 'payment':
-      return 'Zahlung';
-  }
-}
-
-function getModalTitle(type: EventModalType, editing: boolean) {
-  if (editing) {
-    return 'Event bearbeiten';
-  }
-
-  switch (type) {
-    case 'direct':
-      return 'Erstellen';
-    case 'split':
-      return 'Split-Ausgabe';
-    case 'single':
-      return 'Einzeln';
-    case 'game':
-      return 'Game erfassen';
-    case 'payment':
-      return 'Zahlung';
-  }
-}
-
-function getModalEyebrow(type: EventModalType, editing: boolean) {
-  if (editing) {
-    return 'Bearbeiten';
-  }
-
-  switch (type) {
-    case 'direct':
-      return 'Erstellen';
-    case 'split':
-      return 'Kosten teilen';
-    case 'single':
-      return 'Person zu Person';
-    case 'game':
-      return 'Poker Session';
-    case 'payment':
-      return 'Zahlung';
-  }
-}
-
-function createEqualShares(memberIds: string[], totalCents: number) {
-  const baseShare = Math.floor(totalCents / memberIds.length);
-  let remainder = totalCents - baseShare * memberIds.length;
-
-  return memberIds.map((memberId) => {
-    const amountCents = baseShare + (remainder > 0 ? 1 : 0);
-    remainder -= remainder > 0 ? 1 : 0;
-    return { memberId, amountCents };
-  });
-}
-
-function normalizeLines(lines: LedgerLine[]) {
-  const totals = new Map<string, number>();
-
-  for (const line of lines) {
-    totals.set(line.memberId, (totals.get(line.memberId) ?? 0) + line.amountCents);
-  }
-
-  return Array.from(totals.entries())
-    .map(([memberId, amountCents]) => ({ memberId, amountCents }))
-    .filter((line) => line.amountCents !== 0);
 }
 
 function createStyles(colors: DashboardColors) {
@@ -518,9 +317,6 @@ function createStyles(colors: DashboardColors) {
     gap: 18,
     padding: 20,
     paddingBottom: 36,
-  },
-  manualList: {
-    gap: 12,
   },
   });
 }

@@ -14,6 +14,7 @@ export async function authorizeWithInteraApps() {
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: 'kumpelkasse',
     path: 'auth/interaapps',
+    native: 'kumpelkasse://auth/interaapps',
   });
   const request = await AuthSession.loadAsync(
     {
