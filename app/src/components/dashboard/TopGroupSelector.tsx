@@ -1,8 +1,10 @@
 import { SymbolView } from 'expo-symbols';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/dashboard/Avatar';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { Group, Member } from '@/types/debt';
 
 type TopGroupSelectorProps = {
@@ -14,6 +16,8 @@ type TopGroupSelectorProps = {
   onClose: () => void;
   onOpenInvite: () => void;
   onOpenProfile: () => void;
+  onCreateGroup: () => void;
+  onJoinGroupLink: (link: string) => void;
   onSelectGroup: (groupId: string) => void;
 };
 
@@ -26,8 +30,13 @@ export function TopGroupSelector({
   onClose,
   onOpenInvite,
   onOpenProfile,
+  onCreateGroup,
+  onJoinGroupLink,
   onSelectGroup,
 }: TopGroupSelectorProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Pressable style={({ pressed }) => pressed && styles.pressed} onPress={onOpenProfile}>
@@ -38,19 +47,29 @@ export function TopGroupSelector({
         <SymbolView
           name={{ ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }}
           size={14}
-          tintColor="#334155"
+          tintColor={colors.textMuted}
         />
       </Pressable>
       <Pressable style={({ pressed }) => [styles.inviteButton, pressed && styles.pressed]} onPress={onOpenInvite}>
-        <SymbolView name={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }} size={22} tintColor="#172033" />
+        <SymbolView name={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }} size={22} tintColor={colors.text} />
       </Pressable>
 
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
-            <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.sheet}>
+          <KeyboardAvoidingView
+            behavior={Platform.select({ ios: 'padding', default: undefined })}
+            style={styles.keyboardView}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.sheetContent}>
               <View style={styles.handle} />
-              <Text style={styles.sheetTitle}>Gruppe wechseln</Text>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Gruppe wechseln</Text>
+                <Pressable style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} onPress={onClose}>
+                  <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={16} tintColor={colors.text} />
+                </Pressable>
+              </View>
               {groups.map((group) => {
                 const selected = group.id === selectedGroup.id;
                 return (
@@ -72,21 +91,75 @@ export function TopGroupSelector({
                       <SymbolView
                         name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }}
                         size={22}
-                        tintColor="#168A43"
+                        tintColor={colors.positive}
                       />
                     )}
                   </Pressable>
                 );
               })}
-            </SafeAreaView>
-          </Pressable>
-        </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.groupRow, styles.createGroupRow, pressed && styles.pressed]}
+                onPress={() => {
+                  onClose();
+                  onCreateGroup();
+                }}>
+                <Text style={[styles.groupRowText, styles.createGroupText]}>Neue Gruppe erstellen</Text>
+                <SymbolView name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add_circle' }} size={22} tintColor={colors.positive} />
+              </Pressable>
+              <JoinByLinkForm
+                onSubmit={(link) => {
+                  onClose();
+                  onJoinGroupLink(link);
+                }}
+                styles={styles}
+                colors={colors}
+              />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function JoinByLinkForm({
+  onSubmit,
+  styles,
+  colors,
+}: {
+  onSubmit: (link: string) => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: DashboardColors;
+}) {
+  const [link, setLink] = useState('');
+
+  return (
+    <View style={styles.joinCard}>
+      <Text style={styles.joinTitle}>Per Einladungslink beitreten</Text>
+      <TextInput
+        value={link}
+        onChangeText={setLink}
+        placeholder="https://owe.interaapps.de/invite/..."
+        placeholderTextColor={colors.textSubtle}
+        autoCapitalize="none"
+        style={styles.joinInput}
+      />
+      <Pressable
+        style={({ pressed }) => [styles.joinButton, pressed && styles.pressed]}
+        onPress={() => {
+          if (link.trim()) {
+            onSubmit(link.trim());
+            setLink('');
+          }
+        }}>
+        <Text style={styles.joinButtonText}>Beitreten</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
   container: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -96,7 +169,7 @@ const styles = StyleSheet.create({
   },
   groupButton: {
     alignItems: 'center',
-    backgroundColor: '#F2F4F3',
+    backgroundColor: colors.cardMuted,
     borderRadius: 999,
     flexDirection: 'row',
     gap: 8,
@@ -104,13 +177,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   groupName: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '800',
   },
   inviteButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     height: 48,
     justifyContent: 'center',
@@ -119,35 +192,46 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
-  backdrop: {
-    backgroundColor: 'rgba(15, 23, 42, 0.32)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    flex: 1,
+    backgroundColor: colors.card,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  sheetContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
-  },
-  sheetSafeArea: {
+    paddingBottom: 22,
     gap: 10,
-    paddingBottom: 10,
   },
   handle: {
     alignSelf: 'center',
-    backgroundColor: '#D6D9DE',
+    backgroundColor: colors.border,
     borderRadius: 999,
     height: 5,
     marginBottom: 8,
     width: 44,
   },
   sheetTitle: {
-    color: '#111827',
+    flex: 1,
+    color: colors.text,
     fontSize: 22,
     fontWeight: '900',
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 6,
+  },
+  closeButton: {
+    alignItems: 'center',
+    backgroundColor: colors.cardMuted,
+    borderRadius: 999,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   groupRow: {
     alignItems: 'center',
@@ -158,14 +242,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   groupRowSelected: {
-    backgroundColor: '#EFF8F1',
+    backgroundColor: `${colors.positive}18`,
   },
   groupRowText: {
-    color: '#334155',
+    color: colors.textMuted,
     fontSize: 17,
     fontWeight: '700',
   },
   groupRowTextSelected: {
-    color: '#14532D',
+    color: colors.positive,
   },
-});
+  createGroupRow: {
+    backgroundColor: `${colors.positive}12`,
+    marginTop: 6,
+  },
+  createGroupText: {
+    color: colors.positive,
+  },
+  joinCard: {
+    backgroundColor: colors.cardMuted,
+    borderRadius: 24,
+    gap: 10,
+    marginTop: 8,
+    padding: 14,
+  },
+  joinTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  joinInput: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+    minHeight: 46,
+    paddingHorizontal: 12,
+  },
+  joinButton: {
+    alignItems: 'center',
+    backgroundColor: colors.button,
+    borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  joinButtonText: {
+    color: colors.buttonText,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  });
+}

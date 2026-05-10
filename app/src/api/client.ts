@@ -38,3 +38,17 @@ export const apiClient = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL ?? getDefaultBaseUrl(),
   timeout: 10_000,
 });
+
+let sessionToken: string | null = null;
+
+export function setApiSessionToken(token: string | null) {
+  sessionToken = token;
+}
+
+apiClient.interceptors.request.use((config) => {
+  const isAuthMutation = config.url === '/auth/login' || config.url === '/auth/register';
+  if (sessionToken && !isAuthMutation) {
+    config.headers.set('Authorization', `Bearer ${sessionToken}`);
+  }
+  return config;
+});

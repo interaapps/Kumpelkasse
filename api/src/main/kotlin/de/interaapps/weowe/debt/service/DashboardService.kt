@@ -2,6 +2,7 @@ package de.interaapps.weowe.debt.service
 
 import de.interaapps.weowe.debt.dto.DashboardResponse
 import de.interaapps.weowe.debt.dto.InviteResponse
+import de.interaapps.weowe.debt.domain.Summary
 import org.springframework.stereotype.Service
 
 @Service
@@ -10,10 +11,25 @@ class DashboardService(
     private val calculationService: DebtCalculationService,
 ) {
     fun getDashboard(groupId: String?, currentUserId: String): DashboardResponse {
-        val groups = store.getGroups()
-        val selectedGroupId = groupId ?: groups.first().id
+        val groups = store.getGroupsForMember(currentUserId)
+        if (groups.isEmpty()) {
+            return DashboardResponse(
+                currentUserId = currentUserId,
+                selectedGroupId = null,
+                inviteLink = null,
+                groups = emptyList(),
+                members = listOf(store.getMember(currentUserId)),
+                events = emptyList(),
+                summary = Summary(netCents = 0, owedByMeCents = 0, owedToMeCents = 0),
+                owedByMe = emptyList(),
+                owedToMe = emptyList(),
+                optimizedTransfers = emptyList(),
+            )
+        }
+
+        val selectedGroupId = groupId?.takeIf { candidate -> groups.any { it.id == candidate } } ?: groups.first().id
         val selectedGroup = store.getGroup(selectedGroupId)
-        val members = store.getMembers()
+        val members = store.getMembersForGroup(selectedGroup.id)
         val events = store.getEventsForGroup(selectedGroup.id)
         val calculation = calculationService.calculateSummary(events, members, currentUserId)
 
@@ -27,6 +43,7 @@ class DashboardService(
             summary = calculation.summary,
             owedByMe = calculation.owedByMe,
             owedToMe = calculation.owedToMe,
+            optimizedTransfers = calculation.optimizedTransfers,
         )
     }
 
@@ -36,5 +53,5 @@ class DashboardService(
     }
 
     private fun inviteLinkFor(groupId: String): String =
-        "https://wir-schulden.app/invite/$groupId"
+        "https://owe.interaapps.de/invite/$groupId"
 }

@@ -11,11 +11,12 @@ fun DebtGroupEntity.toDomain(): Group =
 fun Group.toEntity(): DebtGroupEntity =
     DebtGroupEntity(id = id, name = name)
 
-fun MemberEntity.toDomain(): Member =
+fun UserEntity.toDomain(): Member =
     Member(
         id = id,
         name = name,
         initials = initials,
+        email = email,
         paypalUrl = paypalUrl,
         cashAppTag = cashAppTag,
         venmoHandle = venmoHandle,
@@ -26,11 +27,13 @@ fun MemberEntity.toDomain(): Member =
         note = note,
     )
 
-fun Member.toEntity(): MemberEntity =
-    MemberEntity(
+fun Member.toEntity(passwordHash: String = ""): UserEntity =
+    UserEntity(
         id = id,
         name = name,
         initials = initials,
+        email = email.orEmpty(),
+        passwordHash = passwordHash,
         paypalUrl = paypalUrl,
         cashAppTag = cashAppTag,
         venmoHandle = venmoHandle,

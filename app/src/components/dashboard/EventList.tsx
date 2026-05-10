@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EventCard } from '@/components/dashboard/EventCard';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { DebtEvent } from '@/types/debt';
 
 type EventListProps = {
@@ -10,6 +11,9 @@ type EventListProps = {
 };
 
 export function EventList({ events, currentUserId, onSelectEvent }: EventListProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Events</Text>
@@ -29,35 +33,37 @@ export function EventList({ events, currentUserId, onSelectEvent }: EventListPro
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: 14,
-    marginHorizontal: 20,
-  },
-  title: {
-    color: '#101828',
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
-  list: {
-    gap: 12,
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-  },
-  emptyTitle: {
-    color: '#111827',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  emptyText: {
-    color: '#667085',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    marginTop: 4,
-  },
-});
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
+    container: {
+      gap: 14,
+      marginHorizontal: 20,
+    },
+    title: {
+      color: colors.text,
+      fontSize: 24,
+      fontWeight: '900',
+      letterSpacing: -0.4,
+    },
+    list: {
+      gap: 12,
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 20,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: '900',
+    },
+    emptyText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 20,
+      marginTop: 4,
+    },
+  });
+}

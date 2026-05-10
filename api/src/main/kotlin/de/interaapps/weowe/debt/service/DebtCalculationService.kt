@@ -2,11 +2,12 @@ package de.interaapps.weowe.debt.service
 
 import de.interaapps.weowe.debt.domain.DebtEvent
 import de.interaapps.weowe.debt.domain.Member
+import de.interaapps.weowe.debt.domain.SettlementExplanationLine
 import de.interaapps.weowe.debt.domain.SettlementRow
+import de.interaapps.weowe.debt.domain.SettlementTransfer
 import de.interaapps.weowe.debt.domain.Summary
 import org.springframework.stereotype.Service
 import kotlin.math.abs
-import kotlin.math.roundToLong
 
 @Service
 class DebtCalculationService {
@@ -27,6 +28,7 @@ class DebtCalculationService {
             ),
             owedByMe = settlements.owedByMe,
             owedToMe = settlements.owedToMe,
+            optimizedTransfers = settlements.optimizedTransfers,
         )
     }
 
@@ -35,81 +37,106 @@ class DebtCalculationService {
         members: List<Member>,
         currentUserId: String,
     ): Settlements {
-        val memberMap = members.associateBy { it.id }
-        val owedByMe = mutableMapOf<String, SettlementAccumulator>()
-        val owedToMe = mutableMapOf<String, SettlementAccumulator>()
-
-        events.forEach { event ->
-            val currentUserAmount = event.amountFor(currentUserId)
-
-            if (currentUserAmount < 0) {
-                val totalPositive = event.lines
-                    .filter { it.amountCents > 0 }
-                    .sumOf { it.amountCents }
-
-                event.lines
-                    .filter { it.memberId != currentUserId && it.amountCents > 0 && totalPositive > 0 }
-                    .forEach { line ->
-                        val amountCents = ((line.amountCents.toDouble() / totalPositive) * abs(currentUserAmount)).roundToLong()
-                        owedByMe.add(line.memberId, amountCents, event.id)
-                    }
-            }
-
-            if (currentUserAmount > 0) {
-                val totalNegative = event.lines
-                    .filter { it.amountCents < 0 }
-                    .sumOf { abs(it.amountCents) }
-
-                event.lines
-                    .filter { it.memberId != currentUserId && it.amountCents < 0 && totalNegative > 0 }
-                    .forEach { line ->
-                        val amountCents = ((abs(line.amountCents).toDouble() / totalNegative) * currentUserAmount).roundToLong()
-                        owedToMe.add(line.memberId, amountCents, event.id)
-                    }
-            }
-        }
-
-        return netSettlements(owedByMe, owedToMe, memberMap)
-    }
-
-    private fun DebtEvent.amountFor(memberId: String): Long =
-        lines.firstOrNull { it.memberId == memberId }?.amountCents ?: 0
-
-    private fun MutableMap<String, SettlementAccumulator>.add(memberId: String, amountCents: Long, eventId: String) {
-        val current = getOrPut(memberId) { SettlementAccumulator() }
-        current.amountCents += amountCents
-        current.eventIds += eventId
-    }
-
-    private fun netSettlements(
-        owedByMe: Map<String, SettlementAccumulator>,
-        owedToMe: Map<String, SettlementAccumulator>,
-        memberMap: Map<String, Member>,
-    ): Settlements {
+        val transfers = calculateOptimizedTransfers(events, members)
         val owedByMeRows = mutableListOf<SettlementRow>()
         val owedToMeRows = mutableListOf<SettlementRow>()
-        val memberIds = owedByMe.keys + owedToMe.keys
 
-        memberIds.forEach { memberId ->
-            val member = memberMap[memberId] ?: return@forEach
-            val byMe = owedByMe[memberId]
-            val toMe = owedToMe[memberId]
-            val netCents = (toMe?.amountCents ?: 0) - (byMe?.amountCents ?: 0)
-            val eventCount = ((byMe?.eventIds ?: emptySet()) + (toMe?.eventIds ?: emptySet())).size
-
-            if (netCents > 0) {
-                owedToMeRows += SettlementRow(member = member, amountCents = netCents, eventCount = eventCount)
+        transfers.forEach { transfer ->
+            if (transfer.from.id == currentUserId) {
+                owedByMeRows += SettlementRow(
+                    member = transfer.to,
+                    amountCents = transfer.amountCents,
+                    eventCount = transfer.eventCount,
+                )
             }
-
-            if (netCents < 0) {
-                owedByMeRows += SettlementRow(member = member, amountCents = abs(netCents), eventCount = eventCount)
+            if (transfer.to.id == currentUserId) {
+                owedToMeRows += SettlementRow(
+                    member = transfer.from,
+                    amountCents = transfer.amountCents,
+                    eventCount = transfer.eventCount,
+                )
             }
         }
 
         return Settlements(
             owedByMe = owedByMeRows.sortedByDescending { it.amountCents },
             owedToMe = owedToMeRows.sortedByDescending { it.amountCents },
+            optimizedTransfers = transfers,
         )
+    }
+
+    private fun calculateOptimizedTransfers(events: List<DebtEvent>, members: List<Member>): List<SettlementTransfer> {
+        val memberMap = members.associateBy { it.id }
+        val balances = mutableMapOf<String, SettlementAccumulator>()
+
+        events.forEach { event ->
+            event.lines.forEach { line ->
+                val accumulator = balances.getOrPut(line.memberId) { SettlementAccumulator() }
+                accumulator.amountCents += line.amountCents
+                accumulator.eventIds += event.id
+                memberMap[line.memberId]?.let { member ->
+                    accumulator.explanationLines += SettlementExplanationLine(
+                        eventId = event.id,
+                        eventTitle = event.title,
+                        member = member,
+                        amountCents = line.amountCents,
+                    )
+                }
+            }
+        }
+
+        val debtors = balances
+            .filter { it.value.amountCents < 0 && memberMap[it.key] != null }
+            .map {
+                OpenBalance(
+                    memberId = it.key,
+                    amountCents = abs(it.value.amountCents),
+                    originalBalanceCents = it.value.amountCents,
+                    eventIds = it.value.eventIds.toSet(),
+                    explanationLines = it.value.explanationLines,
+                )
+            }
+            .sortedWith(compareByDescending<OpenBalance> { it.amountCents }.thenBy { it.memberId })
+            .toMutableList()
+        val creditors = balances
+            .filter { it.value.amountCents > 0 && memberMap[it.key] != null }
+            .map {
+                OpenBalance(
+                    memberId = it.key,
+                    amountCents = it.value.amountCents,
+                    originalBalanceCents = it.value.amountCents,
+                    eventIds = it.value.eventIds.toSet(),
+                    explanationLines = it.value.explanationLines,
+                )
+            }
+            .sortedWith(compareByDescending<OpenBalance> { it.amountCents }.thenBy { it.memberId })
+            .toMutableList()
+        val transfers = mutableListOf<SettlementTransfer>()
+        var debtorIndex = 0
+        var creditorIndex = 0
+
+        while (debtorIndex < debtors.size && creditorIndex < creditors.size) {
+            val debtor = debtors[debtorIndex]
+            val creditor = creditors[creditorIndex]
+            val amountCents = minOf(debtor.amountCents, creditor.amountCents)
+
+            transfers += SettlementTransfer(
+                from = memberMap.getValue(debtor.memberId),
+                to = memberMap.getValue(creditor.memberId),
+                amountCents = amountCents,
+                eventCount = (debtor.eventIds + creditor.eventIds).size,
+                fromBalanceCents = debtor.originalBalanceCents,
+                toBalanceCents = creditor.originalBalanceCents,
+                explanationLines = (debtor.explanationLines + creditor.explanationLines).sortedBy { it.eventTitle },
+            )
+
+            debtor.amountCents -= amountCents
+            creditor.amountCents -= amountCents
+            if (debtor.amountCents == 0L) debtorIndex += 1
+            if (creditor.amountCents == 0L) creditorIndex += 1
+        }
+
+        return transfers.sortedByDescending { it.amountCents }
     }
 }
 
@@ -117,14 +144,25 @@ data class DashboardCalculation(
     val summary: Summary,
     val owedByMe: List<SettlementRow>,
     val owedToMe: List<SettlementRow>,
+    val optimizedTransfers: List<SettlementTransfer>,
 )
 
 data class Settlements(
     val owedByMe: List<SettlementRow>,
     val owedToMe: List<SettlementRow>,
+    val optimizedTransfers: List<SettlementTransfer>,
 )
 
 private data class SettlementAccumulator(
     var amountCents: Long = 0,
     val eventIds: MutableSet<String> = mutableSetOf(),
+    val explanationLines: MutableList<SettlementExplanationLine> = mutableListOf(),
+)
+
+private data class OpenBalance(
+    val memberId: String,
+    var amountCents: Long,
+    val originalBalanceCents: Long,
+    val eventIds: Set<String>,
+    val explanationLines: List<SettlementExplanationLine>,
 )

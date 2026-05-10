@@ -77,4 +77,51 @@ class DebtCalculationServiceTest {
         assertEquals(1_000, result.summary.owedByMeCents)
         assertEquals("alex", result.owedByMe.single().member.id)
     }
+
+    @Test
+    fun `settlements are optimized through current user`() {
+        val events = listOf(
+            DebtEvent(
+                id = "julian-matti",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Julian schuldet Matti",
+                createdAt = Instant.parse("2026-05-09T12:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "julian", amountCents = -2_500),
+                    LedgerLine(memberId = "matti", amountCents = 2_500),
+                ),
+            ),
+            DebtEvent(
+                id = "konrad-julian",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Konrad schuldet Julian",
+                createdAt = Instant.parse("2026-05-09T12:05:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "konrad", amountCents = -2_500),
+                    LedgerLine(memberId = "julian", amountCents = 2_500),
+                ),
+            ),
+        )
+
+        val result = service.calculateSummary(
+            events = events,
+            members = listOf(
+                Member(id = "julian", name = "Julian", initials = "J"),
+                Member(id = "matti", name = "Matti", initials = "M"),
+                Member(id = "konrad", name = "Konrad", initials = "K"),
+            ),
+            currentUserId = "julian",
+        )
+
+        assertEquals(0, result.summary.owedByMeCents)
+        assertEquals(0, result.summary.owedToMeCents)
+        assertEquals("konrad", result.optimizedTransfers.single().from.id)
+        assertEquals("matti", result.optimizedTransfers.single().to.id)
+        assertEquals(2_500, result.optimizedTransfers.single().amountCents)
+        assertEquals(-2_500, result.optimizedTransfers.single().fromBalanceCents)
+        assertEquals(2_500, result.optimizedTransfers.single().toBalanceCents)
+        assertEquals(2, result.optimizedTransfers.single().explanationLines.size)
+    }
 }

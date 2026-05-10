@@ -1,6 +1,7 @@
 import { SymbolView, SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { DebtEvent } from '@/types/debt';
 import { formatEuro, getEventAccent, getEventAmountForMember, getEventTotal } from '@/utils/debt';
 
@@ -11,6 +12,8 @@ type EventCardProps = {
 };
 
 export function EventCard({ event, currentUserId, onPress }: EventCardProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const memberAmount = getEventAmountForMember(event, currentUserId);
   const displayAmount = memberAmount === 0 ? getEventTotal(event) : memberAmount;
   const amountTone = memberAmount > 0 ? styles.positive : memberAmount < 0 ? styles.negative : styles.neutral;
@@ -18,7 +21,7 @@ export function EventCard({ event, currentUserId, onPress }: EventCardProps) {
 
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={() => onPress(event)}>
-      <View style={[styles.iconCircle, { backgroundColor: `${accent}14` }]}>
+      <View style={[styles.iconCircle, { backgroundColor: `${accent}24` }]}>
         <SymbolView name={getIconName(event.type)} size={22} tintColor={accent} />
       </View>
       <View style={styles.content}>
@@ -63,64 +66,66 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-const styles = StyleSheet.create({
-  card: {
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    flexDirection: 'row',
-    gap: 14,
-    padding: 16,
-  },
-  iconCircle: {
-    alignItems: 'center',
-    borderRadius: 18,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  content: {
-    flex: 1,
-    gap: 4,
-  },
-  titleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  title: {
-    color: '#111827',
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  positive: {
-    color: '#159447',
-  },
-  negative: {
-    color: '#D64545',
-  },
-  neutral: {
-    color: '#111827',
-  },
-  date: {
-    color: '#98A2B3',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  description: {
-    color: '#667085',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-    marginTop: 2,
-  },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.99 }],
-  },
-});
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
+    card: {
+      alignItems: 'flex-start',
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      flexDirection: 'row',
+      gap: 14,
+      padding: 16,
+    },
+    iconCircle: {
+      alignItems: 'center',
+      borderRadius: 18,
+      height: 48,
+      justifyContent: 'center',
+      width: 48,
+    },
+    content: {
+      flex: 1,
+      gap: 4,
+    },
+    titleRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+    },
+    title: {
+      color: colors.text,
+      flex: 1,
+      fontSize: 17,
+      fontWeight: '900',
+    },
+    amount: {
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    positive: {
+      color: colors.positive,
+    },
+    negative: {
+      color: colors.negative,
+    },
+    neutral: {
+      color: colors.text,
+    },
+    date: {
+      color: colors.textSubtle,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    description: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 20,
+      marginTop: 2,
+    },
+    pressed: {
+      opacity: 0.72,
+      transform: [{ scale: 0.99 }],
+    },
+  });
+}

@@ -15,6 +15,7 @@ import {
   type GamePlayerValue,
 } from '@/components/dashboard/event-modal/GamePlayersEditor';
 import { MemberMultiSelect, PersonSelect } from '@/components/dashboard/event-modal/MemberSelect';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { DebtEvent, EventType, LedgerLine, Member } from '@/types/debt';
 import { formatEuro, parseEuroToCents } from '@/utils/debt';
 
@@ -47,6 +48,8 @@ export function EventModal({
   onClose,
   onSubmit,
 }: EventModalProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [fromMemberId, setFromMemberId] = useState(currentUserId);
@@ -65,7 +68,7 @@ export function EventModal({
       return;
     }
 
-    const defaultParticipantIds = members.slice(0, 4).map((member) => member.id);
+    const defaultParticipantIds = Array.from(new Set([currentUserId, ...members.slice(0, 4).map((member) => member.id)]));
 
     setTitle(initialEvent?.title ?? getDefaultTitle(type));
     setNote(initialEvent?.description ?? '');
@@ -93,6 +96,14 @@ export function EventModal({
       setToMemberId,
     });
   }, [currentUserId, initialEvent, members, preset, type, visible]);
+
+  useEffect(() => {
+    if (!visible || type !== 'split') {
+      return;
+    }
+
+    setSelectedParticipantIds((current) => (current.includes(payerId) ? current : [payerId, ...current]));
+  }, [payerId, type, visible]);
 
   const gameMembers = members.filter((member) => selectedParticipantIds.includes(member.id));
   const gameLines = gameMembers
@@ -154,7 +165,7 @@ export function EventModal({
 
     if (type === 'split') {
       const totalCents = parseEuroToCents(amount);
-      const participantIds = selectedParticipantIds.length > 0 ? selectedParticipantIds : [payerId];
+      const participantIds = Array.from(new Set([payerId, ...selectedParticipantIds]));
       if (!title.trim() || totalCents <= 0 || participantIds.length === 0) {
         Alert.alert('Fast geschafft', 'Bitte Titel, Betrag und mindestens einen Teilnehmer eintragen.');
         return null;
@@ -273,7 +284,15 @@ export function EventModal({
 
             {type === 'split' && (
               <>
-                <PersonSelect label="Bezahlt von" members={members} selectedId={payerId} onSelect={setPayerId} />
+                <PersonSelect
+                  label="Bezahlt von"
+                  members={members}
+                  selectedId={payerId}
+                  onSelect={(memberId) => {
+                    setPayerId(memberId);
+                    setSelectedParticipantIds((current) => Array.from(new Set([memberId, ...current])));
+                  }}
+                />
                 <MoneyField value={amount} onChangeText={setAmount} label="Gesamtbetrag" />
                 <FormField label="Split-Modus">
                   <SegmentedControl>
@@ -285,11 +304,15 @@ export function EventModal({
                   members={members}
                   selectedIds={selectedParticipantIds}
                   onToggle={(memberId) =>
-                    setSelectedParticipantIds((current) =>
-                      current.includes(memberId)
+                    setSelectedParticipantIds((current) => {
+                      if (memberId === payerId) {
+                        return current;
+                      }
+
+                      return current.includes(memberId)
                         ? current.filter((id) => id !== memberId)
-                        : [...current, memberId],
-                    )
+                        : [...current, memberId];
+                    })
                   }
                 />
                 {splitMode === 'manual' && (
@@ -483,9 +506,10 @@ function normalizeLines(lines: LedgerLine[]) {
     .filter((line) => line.amountCents !== 0);
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F7F8F4',
+    backgroundColor: colors.background,
     flex: 1,
   },
   keyboardView: {
@@ -499,4 +523,5 @@ const styles = StyleSheet.create({
   manualList: {
     gap: 12,
   },
-});
+  });
+}

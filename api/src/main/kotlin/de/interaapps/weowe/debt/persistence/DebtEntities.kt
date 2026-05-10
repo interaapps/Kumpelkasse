@@ -10,9 +10,11 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.time.Instant
 
 @Entity
@@ -25,14 +27,18 @@ class DebtGroupEntity(
 )
 
 @Entity
-@Table(name = "members")
-class MemberEntity(
+@Table(name = "users", uniqueConstraints = [UniqueConstraint(name = "uk_users_email", columnNames = ["email"])])
+class UserEntity(
     @Id
     var id: String = "",
     @Column(nullable = false)
     var name: String = "",
     @Column(nullable = false)
     var initials: String = "",
+    @Column(nullable = false)
+    var email: String = "",
+    @Column(nullable = false, length = 512)
+    var passwordHash: String = "",
     var paypalUrl: String? = null,
     var cashAppTag: String? = null,
     var venmoHandle: String? = null,
@@ -43,6 +49,37 @@ class MemberEntity(
     var bankDetails: String? = null,
     @Column(length = 1_000)
     var note: String? = null,
+)
+
+@Entity
+@Table(
+    name = "group_members",
+    uniqueConstraints = [UniqueConstraint(name = "uk_group_user", columnNames = ["group_id", "user_id"])],
+)
+class GroupMemberEntity(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    var group: DebtGroupEntity? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    var user: UserEntity? = null,
+)
+
+@Entity
+@Table(name = "user_sessions")
+class UserSessionEntity(
+    @Id
+    var token: String = "",
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    var user: UserEntity? = null,
+    @Column(nullable = false)
+    var createdAt: Instant = Instant.now(),
+    @Column(nullable = false)
+    var expiresAt: Instant = Instant.now(),
 )
 
 @Entity

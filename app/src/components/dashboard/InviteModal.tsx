@@ -1,23 +1,50 @@
 import { SymbolView } from 'expo-symbols';
-import { Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toQR } from 'toqr';
 
-import { Group } from '@/types/debt';
+import { Avatar } from '@/components/dashboard/Avatar';
+import { Group, Member } from '@/types/debt';
 
 type InviteModalProps = {
   visible: boolean;
   group: Group;
   inviteLink: string;
+  members: Member[];
   onClose: () => void;
+  onLeaveGroup: () => void | Promise<void>;
 };
 
-export function InviteModal({ visible, group, inviteLink, onClose }: InviteModalProps) {
+export function InviteModal({ visible, group, inviteLink, members, onClose, onLeaveGroup }: InviteModalProps) {
   async function handleShare() {
     await Share.share({
       message: `Komm in meine Gruppe "${group.name}" bei Wir schulden: ${inviteLink}`,
       url: inviteLink,
     });
+  }
+
+  async function handleCopy() {
+    const clipboard = globalThis.navigator?.clipboard;
+    if (clipboard?.writeText) {
+      await clipboard.writeText(inviteLink);
+      Alert.alert('Kopiert', 'Der Einladungslink wurde kopiert.');
+      return;
+    }
+
+    await Share.share({ message: inviteLink, url: inviteLink });
+  }
+
+  function handleLeave() {
+    Alert.alert('Gruppe verlassen?', `Du verlässt "${group.name}". Du kannst später über einen Invite-Link wieder beitreten.`, [
+      { text: 'Abbrechen', style: 'cancel' },
+      {
+        text: 'Verlassen',
+        style: 'destructive',
+        onPress: async () => {
+          await onLeaveGroup();
+        },
+      },
+    ]);
   }
 
   return (
@@ -36,30 +63,66 @@ export function InviteModal({ visible, group, inviteLink, onClose }: InviteModal
           </Pressable>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.qrCard}>
             <QrCode value={inviteLink} />
             <Text style={styles.qrTitle}>Invite-Link</Text>
-            <Text style={styles.qrHint}>Scanbar fur den lokalen Invite-Link</Text>
+            <Text style={styles.qrHint}>Scanbar für {inviteLink}</Text>
           </View>
 
           <View style={styles.linkCard}>
             <Text style={styles.linkLabel}>Link zum Teilen</Text>
             <Text style={styles.linkText}>{inviteLink}</Text>
+            <Pressable style={({ pressed }) => [styles.copyButton, pressed && styles.pressed]} onPress={handleCopy}>
+              <Text style={styles.copyText}>Link kopieren</Text>
+            </Pressable>
           </View>
-        </View>
+
+          <View style={styles.linkCard}>
+            <Text style={styles.linkLabel}>Mitglieder</Text>
+            {members.map((member) => (
+              <View key={member.id} style={styles.memberRow}>
+                <Avatar initials={member.initials} size={38} />
+                <View style={styles.memberText}>
+                  <Text style={styles.memberName}>{member.name}</Text>
+                  {member.email && <Text style={styles.memberEmail}>{member.email}</Text>}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.leaveButton, pressed && styles.pressed]} onPress={handleLeave}>
+            <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={18} tintColor="#B42318" />
+            <Text style={styles.leaveText}>Gruppe verlassen</Text>
+          </Pressable>
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
 }
 
 function QrCode({ value }: { value: string }) {
-  const cells = Array.from(toQR(value));
-  const size = Math.sqrt(cells.length);
-  const cellSize = 220 / size;
+  const rawCells = Array.from(toQR(value));
+  const rawSize = Math.sqrt(rawCells.length);
+  const quietZone = 4;
+  const size = rawSize + quietZone * 2;
+  const cellSize = Math.max(4, Math.floor(244 / size));
+  const qrSize = size * cellSize;
+  const cells = Array.from({ length: size * size }, (_, index) => {
+    const row = Math.floor(index / size);
+    const column = index % size;
+    const rawRow = row - quietZone;
+    const rawColumn = column - quietZone;
+
+    if (rawRow < 0 || rawColumn < 0 || rawRow >= rawSize || rawColumn >= rawSize) {
+      return false;
+    }
+
+    return Boolean(rawCells[rawRow * rawSize + rawColumn]);
+  });
 
   return (
-    <View style={styles.qr}>
+    <View style={[styles.qr, { height: qrSize, width: qrSize }]}>
       {cells.map((active, index) => (
         <View
           key={index}
@@ -124,6 +187,10 @@ const styles = StyleSheet.create({
   content: {
     gap: 16,
     padding: 20,
+    paddingBottom: 34,
+  },
+  scrollView: {
+    flex: 1,
   },
   qrCard: {
     alignItems: 'center',
@@ -132,16 +199,14 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   qr: {
-    backgroundColor: '#F4F6F5',
-    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    height: 252,
-    padding: 16,
-    width: 252,
+    overflow: 'hidden',
   },
   qrCell: {
-    backgroundColor: '#F4F6F5',
+    backgroundColor: '#FFFFFF',
   },
   qrCellActive: {
     backgroundColor: '#111827',
@@ -176,6 +241,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 22,
+  },
+  copyButton: {
+    alignItems: 'center',
+    backgroundColor: '#18251E',
+    borderRadius: 999,
+    minHeight: 46,
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  copyText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  memberRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 48,
+  },
+  memberText: {
+    flex: 1,
+  },
+  memberName: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  memberEmail: {
+    color: '#98A2B3',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  leaveButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFF1F0',
+    borderRadius: 24,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    minHeight: 56,
+  },
+  leaveText: {
+    color: '#B42318',
+    fontSize: 16,
+    fontWeight: '900',
   },
   pressed: {
     opacity: 0.72,

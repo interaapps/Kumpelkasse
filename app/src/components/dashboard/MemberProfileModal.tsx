@@ -14,6 +14,7 @@ type MemberProfileModalProps = {
   currentUserId: string;
   onClose: () => void;
   onSave: (member: Member) => void | Promise<void>;
+  onLogout?: () => void | Promise<void>;
 };
 
 type PaymentCardAction = {
@@ -28,6 +29,7 @@ export function MemberProfileModal({
   currentUserId,
   onClose,
   onSave,
+  onLogout,
 }: MemberProfileModalProps) {
   const [draft, setDraft] = useState<Member | null>(member);
 
@@ -55,6 +57,10 @@ export function MemberProfileModal({
     } catch {
       Alert.alert('Speichern fehlgeschlagen', 'Die API konnte dein Profil nicht speichern. Bitte versuche es erneut.');
     }
+  }
+
+  async function handleLogout() {
+    await onLogout?.();
   }
 
   return (
@@ -85,7 +91,7 @@ export function MemberProfileModal({
           </View>
 
           {isOwnProfile ? (
-            <ProfileEditCards draft={draft} setDraft={setDraft} />
+            <ProfileEditCards draft={draft} setDraft={setDraft} onLogout={handleLogout} />
           ) : (
             <PaymentInfoCards member={member} />
           )}
@@ -98,9 +104,11 @@ export function MemberProfileModal({
 function ProfileEditCards({
   draft,
   setDraft,
+  onLogout,
 }: {
   draft: Member;
   setDraft: React.Dispatch<React.SetStateAction<Member | null>>;
+  onLogout: () => void;
 }) {
   return (
     <View style={styles.cardStack}>
@@ -177,6 +185,11 @@ function ProfileEditCards({
           multiline
         />
       </View>
+
+      <Pressable style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]} onPress={onLogout}>
+        <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={19} tintColor="#B42318" />
+        <Text style={styles.logoutText}>Ausloggen</Text>
+      </Pressable>
     </View>
   );
 }
@@ -435,6 +448,21 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     gap: 16,
     padding: 18,
+  },
+  logoutButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFF1F0',
+    borderRadius: 24,
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    minHeight: 56,
+    paddingHorizontal: 18,
+  },
+  logoutText: {
+    color: '#B42318',
+    fontSize: 16,
+    fontWeight: '900',
   },
   sectionTitle: {
     color: '#101828',

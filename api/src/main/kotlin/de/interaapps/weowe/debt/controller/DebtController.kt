@@ -1,13 +1,20 @@
 package de.interaapps.weowe.debt.controller
 
+import de.interaapps.weowe.debt.auth.CurrentSessionToken
+import de.interaapps.weowe.debt.auth.CurrentUser
 import de.interaapps.weowe.debt.domain.DebtEvent
+import de.interaapps.weowe.debt.domain.Group
 import de.interaapps.weowe.debt.domain.Member
+import de.interaapps.weowe.debt.dto.CreateGroupRequest
 import de.interaapps.weowe.debt.dto.DashboardResponse
 import de.interaapps.weowe.debt.dto.InviteResponse
+import de.interaapps.weowe.debt.dto.LoginRequest
+import de.interaapps.weowe.debt.dto.LoginResponse
+import de.interaapps.weowe.debt.dto.RegisterRequest
 import de.interaapps.weowe.debt.dto.UpdateMemberRequest
 import de.interaapps.weowe.debt.dto.UpsertDebtEventRequest
+import de.interaapps.weowe.debt.service.AuthFacade
 import de.interaapps.weowe.debt.service.DashboardService
-import de.interaapps.weowe.debt.service.DebtSeedData
 import de.interaapps.weowe.debt.service.DebtStore
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -28,44 +35,98 @@ import org.springframework.web.bind.annotation.RestController
 class DebtController(
     private val store: DebtStore,
     private val dashboardService: DashboardService,
+    private val auth: AuthFacade,
 ) {
+    @PostMapping("/auth/login")
+    fun login(@Valid @RequestBody request: LoginRequest): LoginResponse = auth.login(request)
+
+    @PostMapping("/auth/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun register(@Valid @RequestBody request: RegisterRequest): LoginResponse = auth.register(request)
+
+    @GetMapping("/auth/session")
+    fun getSession(
+        @CurrentUser currentUser: Member,
+        @CurrentSessionToken sessionToken: String,
+    ): LoginResponse = LoginResponse(sessionToken = sessionToken, currentUserId = currentUser.id, member = currentUser)
+
+    @PostMapping("/auth/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun logout(@CurrentSessionToken sessionToken: String) {
+        auth.logout(sessionToken)
+    }
+
     @GetMapping("/dashboard")
     fun getDashboard(
         @RequestParam(required = false) groupId: String?,
-        @RequestParam(defaultValue = DebtSeedData.CURRENT_USER_ID) currentUserId: String,
-    ): DashboardResponse = dashboardService.getDashboard(groupId, currentUserId)
+        @CurrentUser currentUser: Member,
+    ): DashboardResponse = dashboardService.getDashboard(groupId, currentUser.id)
 
     @GetMapping("/events/{eventId}")
     fun getEvent(@PathVariable eventId: String): DebtEvent = store.getEvent(eventId)
 
-    @GetMapping("/members")
-    fun getMembers(): List<Member> = store.getMembers()
-
     @GetMapping("/members/{memberId}")
     fun getMember(@PathVariable memberId: String): Member = store.getMember(memberId)
 
+    @GetMapping("/groups/{groupId}/members")
+    fun getGroupMembers(@PathVariable groupId: String): List<Member> = store.getMembersForGroup(groupId)
+
+    @PostMapping("/groups")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createGroup(
+        @CurrentUser currentUser: Member,
+        @Valid @RequestBody request: CreateGroupRequest,
+    ): Group = store.createGroup(currentUser.id, request)
+
+    @PostMapping("/groups/{groupId}/join")
+    fun joinGroup(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ): Group = store.joinGroup(currentUser.id, groupId)
+
+    @DeleteMapping("/groups/{groupId}/members/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun leaveGroup(
+        @PathVariable groupId: String,
+        @CurrentUser currentUser: Member,
+    ) {
+        store.leaveGroup(currentUser.id, groupId)
+    }
+
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)
-    fun createEvent(@Valid @RequestBody request: UpsertDebtEventRequest): DebtEvent =
-        store.createEvent(request)
+    fun createEvent(
+        @CurrentUser currentUser: Member,
+        @Valid @RequestBody request: UpsertDebtEventRequest,
+    ): DebtEvent = store.createEvent(request)
 
     @PutMapping("/events/{eventId}")
     fun updateEvent(
         @PathVariable eventId: String,
+        @CurrentUser currentUser: Member,
         @Valid @RequestBody request: UpsertDebtEventRequest,
     ): DebtEvent = store.updateEvent(eventId, request)
 
     @DeleteMapping("/events/{eventId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun deleteEvent(@PathVariable eventId: String) {
+    fun deleteEvent(
+        @PathVariable eventId: String,
+        @CurrentUser currentUser: Member,
+    ) {
         store.deleteEvent(eventId)
     }
 
     @PatchMapping("/members/{memberId}")
     fun updateMember(
         @PathVariable memberId: String,
+        @CurrentUser currentUser: Member,
         @Valid @RequestBody request: UpdateMemberRequest,
-    ): Member = store.updateMember(memberId, request)
+    ): Member {
+        if (currentUser.id != memberId) {
+            throw org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Only your own profile can be edited")
+        }
+        return store.updateMember(memberId, request)
+    }
 
     @GetMapping("/invites/{groupId}")
     fun getInvite(@PathVariable groupId: String): InviteResponse = dashboardService.getInvite(groupId)

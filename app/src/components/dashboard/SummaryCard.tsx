@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { formatEuro } from '@/utils/debt';
 
 type SummaryCardProps = {
@@ -9,6 +10,8 @@ type SummaryCardProps = {
 };
 
 export function SummaryCard({ netCents, owedByMeCents, owedToMeCents }: SummaryCardProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const isPositive = netCents >= 0;
 
   return (
@@ -35,63 +38,65 @@ export function SummaryCard({ netCents, owedByMeCents, owedToMeCents }: SummaryC
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    marginHorizontal: 20,
-    padding: 26,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.08,
-    shadowRadius: 28,
-  },
-  label: {
-    color: '#667085',
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  total: {
-    fontSize: 58,
-    fontWeight: '900',
-    letterSpacing: -2,
-    lineHeight: 68,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  positive: {
-    color: '#159447',
-  },
-  negative: {
-    color: '#D64545',
-  },
-  divider: {
-    backgroundColor: '#EEF0F2',
-    height: 1,
-    marginVertical: 20,
-  },
-  row: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  metric: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 5,
-  },
-  metricLabel: {
-    color: '#8A93A1',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  metricValue: {
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  verticalDivider: {
-    backgroundColor: '#EEF0F2',
-    height: 38,
-    width: 1,
-  },
-});
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 32,
+      marginHorizontal: 20,
+      padding: 26,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 18 },
+      shadowOpacity: 0.08,
+      shadowRadius: 28,
+    },
+    label: {
+      color: colors.textMuted,
+      fontSize: 15,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    total: {
+      fontSize: 58,
+      fontWeight: '900',
+      letterSpacing: -2,
+      lineHeight: 68,
+      marginTop: 4,
+      textAlign: 'center',
+    },
+    positive: {
+      color: colors.positive,
+    },
+    negative: {
+      color: colors.negative,
+    },
+    divider: {
+      backgroundColor: colors.border,
+      height: 1,
+      marginVertical: 20,
+    },
+    row: {
+      alignItems: 'center',
+      flexDirection: 'row',
+    },
+    metric: {
+      alignItems: 'center',
+      flex: 1,
+      gap: 5,
+    },
+    metricLabel: {
+      color: colors.textSubtle,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    metricValue: {
+      fontSize: 22,
+      fontWeight: '900',
+    },
+    verticalDivider: {
+      backgroundColor: colors.border,
+      height: 38,
+      width: 1,
+    },
+  });
+}

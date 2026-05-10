@@ -3,11 +3,14 @@ package de.interaapps.weowe.debt.service
 import de.interaapps.weowe.debt.domain.DebtEvent
 import de.interaapps.weowe.debt.domain.Group
 import de.interaapps.weowe.debt.domain.Member
+import de.interaapps.weowe.debt.dto.CreateGroupRequest
 import de.interaapps.weowe.debt.dto.UpdateMemberRequest
 import de.interaapps.weowe.debt.dto.UpsertDebtEventRequest
 import de.interaapps.weowe.debt.persistence.DebtEventRepository
 import de.interaapps.weowe.debt.persistence.DebtGroupRepository
-import de.interaapps.weowe.debt.persistence.MemberRepository
+import de.interaapps.weowe.debt.persistence.GroupMemberEntity
+import de.interaapps.weowe.debt.persistence.GroupMemberRepository
+import de.interaapps.weowe.debt.persistence.UserRepository
 import de.interaapps.weowe.debt.persistence.toDomain
 import de.interaapps.weowe.debt.persistence.toEntity
 import org.springframework.http.HttpStatus
@@ -20,18 +23,66 @@ import java.util.UUID
 @Service
 class JpaDebtStore(
     private val groupRepository: DebtGroupRepository,
-    private val memberRepository: MemberRepository,
+    private val userRepository: UserRepository,
     private val eventRepository: DebtEventRepository,
+    private val groupMemberRepository: GroupMemberRepository,
 ) : DebtStore {
     @Transactional(readOnly = true)
-    override fun getGroups(): List<Group> = groupRepository.findAll().map { it.toDomain() }
+    override fun getGroupsForMember(memberId: String): List<Group> {
+        getMember(memberId)
+        return groupMemberRepository.findByUserId(memberId)
+            .mapNotNull { it.group?.toDomain() }
+            .sortedBy { it.name.lowercase() }
+    }
+
+    @Transactional
+    override fun createGroup(ownerMemberId: String, request: CreateGroupRequest): Group {
+        val owner = userRepository.findById(ownerMemberId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found: $ownerMemberId") }
+        val group = groupRepository.save(
+            de.interaapps.weowe.debt.persistence.DebtGroupEntity(
+                id = "group-${UUID.randomUUID()}",
+                name = request.name.trim(),
+            ),
+        )
+        groupMemberRepository.save(GroupMemberEntity(group = group, user = owner))
+        return group.toDomain()
+    }
+
+    @Transactional
+    override fun joinGroup(memberId: String, groupId: String): Group {
+        val user = userRepository.findById(memberId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found: $memberId") }
+        val group = groupRepository.findById(groupId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: $groupId") }
+
+        if (!groupMemberRepository.existsByGroupIdAndUserId(groupId, memberId)) {
+            groupMemberRepository.save(GroupMemberEntity(group = group, user = user))
+        }
+
+        return group.toDomain()
+    }
+
+    @Transactional
+    override fun leaveGroup(memberId: String, groupId: String) {
+        getGroup(groupId)
+        if (!groupMemberRepository.existsByGroupIdAndUserId(groupId, memberId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Group membership not found")
+        }
+        groupMemberRepository.deleteByGroupIdAndUserId(groupId, memberId)
+    }
 
     @Transactional(readOnly = true)
-    override fun getMembers(): List<Member> = memberRepository.findAll().map { it.toDomain() }
+    override fun getMembersForGroup(groupId: String): List<Member> {
+        getGroup(groupId)
+        return groupMemberRepository.findByGroupId(groupId)
+            .mapNotNull { it.user?.toDomain() }
+            .sortedBy { it.name.lowercase() }
+    }
 
     @Transactional(readOnly = true)
     override fun getMember(memberId: String): Member =
-        memberRepository.findById(memberId)
+        userRepository.findById(memberId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found: $memberId") }
             .toDomain()
 
@@ -94,10 +145,11 @@ class JpaDebtStore(
 
     @Transactional
     override fun updateMember(memberId: String, request: UpdateMemberRequest): Member {
-        val existing = memberRepository.findById(memberId)
+        val existing = userRepository.findById(memberId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found: $memberId") }
 
         existing.name = request.name.trim()
+        request.email.blankToNull()?.lowercase()?.let { existing.email = it }
         existing.initials = request.initials?.takeIf { it.isNotBlank() } ?: initialsFrom(request.name)
         existing.paypalUrl = request.paypalUrl.blankToNull()
         existing.cashAppTag = request.cashAppTag.blankToNull()
@@ -108,7 +160,7 @@ class JpaDebtStore(
         existing.bankDetails = request.bankDetails.blankToNull()
         existing.note = request.note.blankToNull()
 
-        return memberRepository.save(existing).toDomain()
+        return userRepository.save(existing).toDomain()
     }
 
     private fun UpsertDebtEventRequest.toEvent(id: String): DebtEvent =
@@ -133,7 +185,9 @@ class JpaDebtStore(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Event needs at least one ledger line")
         }
 
-        val knownMemberIds = memberRepository.findAll().map { it.id }.toSet()
+        val knownMemberIds = groupMemberRepository.findByGroupId(event.groupId)
+            .mapNotNull { it.user?.id }
+            .toSet()
         event.lines.forEach { line ->
             if (line.memberId !in knownMemberIds) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown member: ${line.memberId}")
