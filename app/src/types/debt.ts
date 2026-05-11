@@ -7,6 +7,17 @@ export type LedgerLine = {
   amountCents: number;
 };
 
+export type SplitShare = {
+  memberId: string;
+  amountCents: number;
+};
+
+export type GameEntry = {
+  memberId: string;
+  buyInCents: number;
+  cashOutCents: number;
+};
+
 export type DebtEvent = {
   id: string;
   groupId: string;
@@ -17,6 +28,10 @@ export type DebtEvent = {
   lines: LedgerLine[];
   gameMode?: GameMode | null;
   bankMemberId?: string | null;
+  splitTotalCents?: number | null;
+  splitParticipantIds?: string[];
+  splitShares?: SplitShare[];
+  gameEntries?: GameEntry[];
 };
 
 export type Group = {

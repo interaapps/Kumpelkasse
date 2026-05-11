@@ -119,7 +119,14 @@ class DebtControllerTest {
         val eventFeedService = EventFeedService(store)
         val accessControl = AccessControlService(store)
         val builder: StandaloneMockMvcBuilder = MockMvcBuilders
-            .standaloneSetup(DebtController(store, dashboardService, eventFeedService, accessControl, insightsService, auth))
+            .standaloneSetup(
+                AuthController(auth),
+                DashboardController(dashboardService),
+                EventController(store, eventFeedService, accessControl),
+                GroupController(store, accessControl, insightsService),
+                MemberController(store, accessControl),
+                InviteController(accessControl, dashboardService),
+            )
         builder.addFilters<StandaloneMockMvcBuilder>(BearerAuthFilter(auth) as Filter)
         builder.setCustomArgumentResolvers(CurrentUserArgumentResolver(), CurrentSessionTokenArgumentResolver())
         return builder.build()

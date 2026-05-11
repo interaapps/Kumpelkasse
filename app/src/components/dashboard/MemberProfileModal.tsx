@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchRelationshipHistory } from '@/api/debt-api';
 import { Avatar } from '@/components/dashboard/Avatar';
 import { FormTextInput } from '@/components/dashboard/event-modal/EventModalForm';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { DebtEvent, Member, RelationshipHistory } from '@/types/debt';
 import { formatEuro, getInitials } from '@/utils/debt';
 
@@ -34,6 +35,8 @@ export function MemberProfileModal({
   onSave,
   onLogout,
 }: MemberProfileModalProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const [draft, setDraft] = useState<Member | null>(member);
   const [relationshipHistory, setRelationshipHistory] = useState<RelationshipHistory | null>(null);
   const [relationshipLoading, setRelationshipLoading] = useState(false);
@@ -104,7 +107,7 @@ export function MemberProfileModal({
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header}>
           <Pressable style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]} onPress={onClose}>
-            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor="#111827" />
+            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
           </Pressable>
           <View style={styles.headerText}>
             <Text style={styles.title}>{member.name}</Text>
@@ -152,6 +155,9 @@ function ProfileEditCards({
   setDraft: React.Dispatch<React.SetStateAction<Member | null>>;
   onLogout: () => void;
 }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.cardStack}>
       <View style={styles.formCard}>
@@ -259,7 +265,7 @@ function ProfileEditCards({
       </View>
 
       <Pressable style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]} onPress={onLogout}>
-        <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={19} tintColor="#B42318" />
+        <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={19} tintColor={colors.negative} />
         <Text style={styles.logoutText}>Ausloggen</Text>
       </Pressable>
     </View>
@@ -267,6 +273,8 @@ function ProfileEditCards({
 }
 
 function PaymentInfoCards({ member }: { member: Member }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const cards = getPaymentCards(member);
 
   return (
@@ -289,6 +297,8 @@ function RelationshipSection({
   loading: boolean;
   currentUserId: string;
 }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <View style={styles.cardStack}>
       <View style={styles.formCard}>
@@ -321,6 +331,8 @@ function RelationshipSection({
 }
 
 function RelationshipMetric({ label, value }: { label: string; value: string }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <View style={styles.relationshipMetric}>
       <Text style={styles.relationshipLabel}>{label}</Text>
@@ -330,6 +342,8 @@ function RelationshipMetric({ label, value }: { label: string; value: string }) 
 }
 
 function RelationshipEventCard({ event, currentUserId }: { event: DebtEvent; currentUserId: string }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const ownAmount = event.lines.find((line) => line.memberId === currentUserId)?.amountCents ?? 0;
 
   return (
@@ -346,6 +360,8 @@ function RelationshipEventCard({ event, currentUserId }: { event: DebtEvent; cur
 }
 
 function ToggleRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <Pressable style={({ pressed }) => [styles.toggleRow, pressed && styles.pressed]} onPress={onToggle}>
       <Text style={styles.toggleLabel}>{label}</Text>
@@ -365,13 +381,15 @@ function PaymentInfoCard({
   value?: string;
   action?: PaymentCardAction;
 }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const content = (
     <>
       <View style={styles.paymentIcon}>
         <SymbolView
           name={action?.icon ?? { ios: 'info.circle.fill', android: 'info', web: 'info' }}
           size={20}
-          tintColor="#172033"
+          tintColor={colors.text}
         />
       </View>
       <View style={styles.paymentText}>
@@ -526,9 +544,10 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+return StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F7F8F4',
+    backgroundColor: colors.background,
     flex: 1,
   },
   header: {
@@ -540,7 +559,7 @@ const styles = StyleSheet.create({
   },
   roundButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     height: 44,
     justifyContent: 'center',
@@ -550,26 +569,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eyebrow: {
-    color: '#8A93A1',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '900',
   },
   saveButton: {
-    backgroundColor: '#18251E',
+    backgroundColor: colors.button,
     borderRadius: 999,
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 16,
   },
   saveText: {
-    color: '#FFFFFF',
+    color: colors.buttonText,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -580,18 +599,18 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 30,
     padding: 24,
   },
   profileName: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 26,
     fontWeight: '900',
     marginTop: 12,
   },
   profileMeta: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 14,
     fontWeight: '800',
     marginTop: 4,
@@ -601,14 +620,14 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 28,
     gap: 16,
     padding: 18,
   },
   logoutButton: {
     alignItems: 'center',
-    backgroundColor: '#FFF1F0',
+    backgroundColor: `${colors.negative}18`,
     borderRadius: 24,
     flexDirection: 'row',
     gap: 10,
@@ -617,25 +636,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   logoutText: {
-    color: '#B42318',
+    color: colors.negative,
     fontSize: 16,
     fontWeight: '900',
   },
   helperText: {
-    color: '#667085',
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
   },
   sectionTitle: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.3,
   },
   toggleRow: {
     alignItems: 'center',
-    backgroundColor: '#F6F7F8',
+    backgroundColor: colors.cardMuted,
     borderRadius: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -643,49 +662,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   toggleLabel: {
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     fontSize: 15,
     fontWeight: '800',
   },
   togglePill: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.border,
     borderRadius: 999,
     minWidth: 62,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   togglePillActive: {
-    backgroundColor: '#DDF6E6',
+    backgroundColor: `${colors.positive}22`,
   },
   toggleText: {
-    color: '#475467',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '900',
     textAlign: 'center',
   },
   toggleTextActive: {
-    color: '#159447',
+    color: colors.positive,
   },
   relationshipMetrics: {
     flexDirection: 'row',
     gap: 10,
   },
   relationshipMetric: {
-    backgroundColor: '#F6F7F8',
+    backgroundColor: colors.cardMuted,
     borderRadius: 20,
     flex: 1,
     gap: 4,
     padding: 14,
   },
   relationshipLabel: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 11,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
   relationshipValue: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -693,7 +712,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   relationshipEventCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.cardMuted,
     borderRadius: 20,
     gap: 6,
     padding: 14,
@@ -704,7 +723,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   relationshipEventTitle: {
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     fontSize: 15,
     fontWeight: '900',
@@ -714,20 +733,20 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   relationshipEventDescription: {
-    color: '#667085',
+    color: colors.textMuted,
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
   },
   positiveText: {
-    color: '#159447',
+    color: colors.positive,
   },
   negativeText: {
-    color: '#D64545',
+    color: colors.negative,
   },
   paymentCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 24,
     flexDirection: 'row',
     gap: 12,
@@ -736,7 +755,7 @@ const styles = StyleSheet.create({
   },
   paymentIcon: {
     alignItems: 'center',
-    backgroundColor: '#F1F4F2',
+    backgroundColor: colors.cardMuted,
     borderRadius: 18,
     height: 44,
     justifyContent: 'center',
@@ -746,28 +765,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   paymentLabel: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   paymentValue: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 22,
     marginTop: 3,
   },
   actionText: {
-    color: '#159447',
+    color: colors.positive,
     fontSize: 13,
     fontWeight: '900',
   },
   emptyValue: {
-    color: '#A0A8B3',
+    color: colors.textSubtle,
   },
   pressed: {
     opacity: 0.72,
   },
 });
+}

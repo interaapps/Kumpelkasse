@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toQR } from 'toqr';
 
 import { Avatar } from '@/components/dashboard/Avatar';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { Group, Member } from '@/types/debt';
 
 type InviteModalProps = {
@@ -16,6 +17,9 @@ type InviteModalProps = {
 };
 
 export function InviteModal({ visible, group, inviteLink, members, onClose, onLeaveGroup }: InviteModalProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
+
   async function handleShare() {
     await Share.share({
       message: `Komm in meine Gruppe "${group.name}" bei Kumpelkasse: ${inviteLink}`,
@@ -52,7 +56,7 @@ export function InviteModal({ visible, group, inviteLink, members, onClose, onLe
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header}>
           <Pressable style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]} onPress={onClose}>
-            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor="#111827" />
+            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
           </Pressable>
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>Einladen</Text>
@@ -92,7 +96,7 @@ export function InviteModal({ visible, group, inviteLink, members, onClose, onLe
           </View>
 
           <Pressable style={({ pressed }) => [styles.leaveButton, pressed && styles.pressed]} onPress={handleLeave}>
-            <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={18} tintColor="#B42318" />
+            <SymbolView name={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} size={18} tintColor={colors.negative} />
             <Text style={styles.leaveText}>Gruppe verlassen</Text>
           </Pressable>
         </ScrollView>
@@ -102,6 +106,8 @@ export function InviteModal({ visible, group, inviteLink, members, onClose, onLe
 }
 
 function QrCode({ value }: { value: string }) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   const rawCells = Array.from(toQR(value));
   const rawSize = Math.sqrt(rawCells.length);
   const quietZone = 4;
@@ -137,9 +143,10 @@ function QrCode({ value }: { value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+return StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F7F8F4',
+    backgroundColor: colors.background,
     flex: 1,
   },
   header: {
@@ -151,7 +158,7 @@ const styles = StyleSheet.create({
   },
   roundButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     height: 44,
     justifyContent: 'center',
@@ -161,26 +168,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eyebrow: {
-    color: '#8A93A1',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '900',
   },
   shareButton: {
-    backgroundColor: '#18251E',
+    backgroundColor: colors.button,
     borderRadius: 999,
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   shareText: {
-    color: '#FFFFFF',
+    color: colors.buttonText,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -194,64 +201,64 @@ const styles = StyleSheet.create({
   },
   qrCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 32,
     padding: 24,
   },
   qr: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 18,
     flexDirection: 'row',
     flexWrap: 'wrap',
     overflow: 'hidden',
   },
   qrCell: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
   },
   qrCellActive: {
-    backgroundColor: '#111827',
+    backgroundColor: colors.text,
   },
   qrTitle: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '900',
     marginTop: 18,
   },
   qrHint: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 13,
     fontWeight: '800',
     marginTop: 4,
   },
   linkCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 24,
     gap: 6,
     padding: 18,
   },
   linkLabel: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   linkText: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 22,
   },
   copyButton: {
     alignItems: 'center',
-    backgroundColor: '#18251E',
+    backgroundColor: colors.button,
     borderRadius: 999,
     minHeight: 46,
     justifyContent: 'center',
     marginTop: 8,
   },
   copyText: {
-    color: '#FFFFFF',
+    color: colors.buttonText,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -265,19 +272,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberName: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '900',
   },
   memberEmail: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '700',
     marginTop: 2,
   },
   leaveButton: {
     alignItems: 'center',
-    backgroundColor: '#FFF1F0',
+    backgroundColor: `${colors.negative}18`,
     borderRadius: 24,
     flexDirection: 'row',
     gap: 10,
@@ -285,7 +292,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   leaveText: {
-    color: '#B42318',
+    color: colors.negative,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -293,3 +300,4 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
 });
+}

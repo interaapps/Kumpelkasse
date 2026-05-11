@@ -70,7 +70,10 @@ export function EventModal({
       return;
     }
 
-    const defaultParticipantIds = Array.from(new Set([currentUserId, ...members.slice(0, 4).map((member) => member.id)]));
+    const defaultParticipantIds =
+      type === 'split'
+        ? [currentUserId]
+        : Array.from(new Set([currentUserId, ...members.slice(0, 4).map((member) => member.id)]));
 
     setTitle(initialEvent?.title ?? getDefaultTitle(type));
     setNote(initialEvent?.description ?? '');
@@ -97,19 +100,13 @@ export function EventModal({
       setBankMemberId,
       setGameValues,
       setGameMode,
+      setManualShares,
       setPayerId,
       setSelectedParticipantIds,
+      setSplitMode,
       setToMemberId,
     });
   }, [currentUserId, initialEvent, members, preset, type, visible]);
-
-  useEffect(() => {
-    if (!visible || type !== 'split') {
-      return;
-    }
-
-    setSelectedParticipantIds((current) => (current.includes(payerId) ? current : [payerId, ...current]));
-  }, [payerId, type, visible]);
 
   useEffect(() => {
     if (!visible || type !== 'game' || gameMode !== 'bank' || !bankMemberId) {
@@ -194,7 +191,7 @@ export function EventModal({
 
     if (type === 'split') {
       const totalCents = parseEuroToCents(amount);
-      const participantIds = Array.from(new Set([payerId, ...selectedParticipantIds]));
+      const participantIds = Array.from(new Set(selectedParticipantIds));
       if (!title.trim() || totalCents <= 0 || participantIds.length === 0) {
         Alert.alert('Fast geschafft', 'Bitte Titel, Betrag und mindestens einen Teilnehmer eintragen.');
         return null;
@@ -214,6 +211,19 @@ export function EventModal({
         return null;
       }
 
+      const normalizedSplitLines = normalizeLines([
+        { memberId: payerId, amountCents: totalCents },
+        ...shares.map((share) => ({ memberId: share.memberId, amountCents: -share.amountCents })),
+      ]);
+
+      if (normalizedSplitLines.length === 0) {
+        Alert.alert(
+          'Split ohne offene Schuld',
+          'So bleibt nach dem Entfernen kein offener Betrag mehr übrig. Füge mindestens eine weitere beteiligte Person hinzu oder lösche das Event stattdessen.',
+        );
+        return null;
+      }
+
       return {
         id,
         groupId,
@@ -221,10 +231,10 @@ export function EventModal({
         title: title.trim(),
         description: `${getMemberName(payerId)} hat bezahlt · ${participantIds.length} Teilnehmer`,
         createdAt,
-        lines: normalizeLines([
-          { memberId: payerId, amountCents: totalCents },
-          ...shares.map((share) => ({ memberId: share.memberId, amountCents: -share.amountCents })),
-        ]),
+        lines: normalizedSplitLines,
+        splitTotalCents: totalCents,
+        splitParticipantIds: participantIds,
+        splitShares: shares,
       };
     }
 
@@ -256,6 +266,11 @@ export function EventModal({
         lines: gameLines,
         gameMode,
         bankMemberId,
+        gameEntries: gameMembers.map((member) => ({
+          memberId: member.id,
+          buyInCents: parseEuroToCents(gameValues[member.id]?.buyIn ?? ''),
+          cashOutCents: parseEuroToCents(gameValues[member.id]?.cashOut ?? ''),
+        })),
       };
     }
 

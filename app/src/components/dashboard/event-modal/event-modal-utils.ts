@@ -12,8 +12,10 @@ export function hydrateFromEvent(
     setGameValues: (value: Record<string, GamePlayerValue>) => void;
     setGameMode?: (value: GameMode) => void;
     setBankMemberId?: (value: string | null) => void;
+    setManualShares?: (value: Record<string, string>) => void;
     setPayerId: (value: string) => void;
     setSelectedParticipantIds: (value: string[]) => void;
+    setSplitMode?: (value: 'equal' | 'manual') => void;
     setToMemberId: (value: string) => void;
   },
 ) {
@@ -33,19 +35,55 @@ export function hydrateFromEvent(
   }
 
   if (type === 'split') {
+    if (event.splitTotalCents && event.splitParticipantIds?.length) {
+      const splitShares = event.splitShares ?? [];
+      const allEqual =
+        splitShares.length > 0 &&
+        splitShares.every((share) => share.amountCents === splitShares[0]?.amountCents);
+      setters.setPayerId(
+        [...event.lines].filter((line) => line.amountCents > 0).sort((a, b) => b.amountCents - a.amountCents)[0]?.memberId ??
+          setters.currentUserId,
+      );
+      setters.setAmount(centsToInput(event.splitTotalCents));
+      setters.setSelectedParticipantIds(event.splitParticipantIds);
+      setters.setSplitMode?.(allEqual ? 'equal' : 'manual');
+      setters.setManualShares?.(
+        Object.fromEntries(splitShares.map((share) => [share.memberId, centsToInput(share.amountCents)])),
+      );
+      return;
+    }
+
     const positiveLine = [...event.lines]
       .filter((line) => line.amountCents > 0)
       .sort((a, b) => b.amountCents - a.amountCents)[0];
     const participantIds = event.lines.filter((line) => line.amountCents < 0).map((line) => line.memberId);
-    const selectedIds = positiveLine ? Array.from(new Set([positiveLine.memberId, ...participantIds])) : participantIds;
 
     setters.setPayerId(positiveLine?.memberId ?? setters.currentUserId);
-    setters.setAmount(centsToInput(event.lines.filter((line) => line.amountCents > 0).reduce((total, line) => total + line.amountCents, 0)));
-    setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
+    setters.setAmount(centsToInput(event.lines.filter((line) => line.amountCents < 0).reduce((total, line) => total + Math.abs(line.amountCents), 0)));
+    setters.setSelectedParticipantIds(participantIds.length > 0 ? participantIds : setters.defaultParticipantIds);
     return;
   }
 
   if (type === 'game') {
+    if (event.gameEntries?.length) {
+      const selectedIds = event.gameEntries.map((entry) => entry.memberId);
+      setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
+      setters.setGameMode?.(event.gameMode ?? 'poker');
+      setters.setBankMemberId?.(event.bankMemberId ?? null);
+      setters.setGameValues(
+        Object.fromEntries(
+          event.gameEntries.map((entry) => [
+            entry.memberId,
+            {
+              buyIn: centsToInput(entry.buyInCents),
+              cashOut: centsToInput(entry.cashOutCents),
+            },
+          ]),
+        ),
+      );
+      return;
+    }
+
     const selectedIds = event.lines.map((line) => line.memberId);
     setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
     setters.setGameMode?.(event.gameMode ?? 'poker');

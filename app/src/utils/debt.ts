@@ -97,7 +97,7 @@ export function calculateSettlements(
 export function getEventAccent(type: EventType) {
   switch (type) {
     case 'direct':
-      return '#111827';
+      return '#475467';
     case 'split':
       return '#2563EB';
     case 'single':
@@ -105,7 +105,7 @@ export function getEventAccent(type: EventType) {
     case 'game':
       return '#16A34A';
     case 'payment':
-      return '#64748B';
+      return '#0EA5E9';
   }
 }
 

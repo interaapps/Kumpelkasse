@@ -114,6 +114,15 @@ function DashboardContent() {
           onClose={() => actions.setJoinPromptGroupId(null)}
           onJoin={actions.joinPendingGroup}
         />
+        <MemberProfileModal
+          visible={state.profileVisible}
+          member={currentUser ?? null}
+          groupId=""
+          currentUserId={currentUserId}
+          onClose={() => actions.setProfileVisible(false)}
+          onSave={actions.handleSaveMember}
+          onLogout={actions.handleLogout}
+        />
       </>
     );
   }

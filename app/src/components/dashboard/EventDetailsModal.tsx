@@ -3,6 +3,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/dashboard/Avatar';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { DebtEvent, Member } from '@/types/debt';
 import { formatEuro, getEventAccent } from '@/utils/debt';
 
@@ -25,6 +26,8 @@ export function EventDetailsModal({
   onDelete,
   onSelectMember,
 }: EventDetailsModalProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   if (!event) {
     return null;
   }
@@ -54,7 +57,7 @@ export function EventDetailsModal({
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header}>
           <Pressable style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]} onPress={onClose}>
-            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor="#111827" />
+            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
           </Pressable>
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>{getTypeLabel(event.type)}</Text>
@@ -98,7 +101,7 @@ export function EventDetailsModal({
           </View>
 
           <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} onPress={handleDelete}>
-            <SymbolView name={{ ios: 'trash.fill', android: 'delete', web: 'delete' }} size={18} tintColor="#D64545" />
+            <SymbolView name={{ ios: 'trash.fill', android: 'delete', web: 'delete' }} size={18} tintColor={colors.negative} />
             <Text style={styles.deleteText}>Event löschen</Text>
           </Pressable>
         </ScrollView>
@@ -147,9 +150,10 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+  return StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F7F8F4',
+    backgroundColor: colors.background,
     flex: 1,
   },
   header: {
@@ -161,7 +165,7 @@ const styles = StyleSheet.create({
   },
   roundButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     height: 44,
     justifyContent: 'center',
@@ -171,26 +175,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eyebrow: {
-    color: '#8A93A1',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '900',
   },
   editButton: {
-    backgroundColor: '#18251E',
+    backgroundColor: colors.button,
     borderRadius: 999,
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 15,
   },
   editText: {
-    color: '#FFFFFF',
+    color: colors.buttonText,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -201,7 +205,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 30,
     padding: 24,
   },
@@ -213,14 +217,14 @@ const styles = StyleSheet.create({
     width: 60,
   },
   heroTitle: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 26,
     fontWeight: '900',
     marginTop: 14,
     textAlign: 'center',
   },
   heroDescription: {
-    color: '#667085',
+    color: colors.textMuted,
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 21,
@@ -228,19 +232,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   date: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 13,
     fontWeight: '800',
     marginTop: 14,
   },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 26,
     gap: 12,
     padding: 18,
   },
   sectionTitle: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 19,
     fontWeight: '900',
   },
@@ -253,12 +257,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberName: {
-    color: '#1F2937',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '900',
   },
   memberMeta: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: '800',
     marginTop: 2,
@@ -268,14 +272,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   positive: {
-    color: '#159447',
+    color: colors.positive,
   },
   negative: {
-    color: '#D64545',
+    color: colors.negative,
   },
   deleteButton: {
     alignItems: 'center',
-    backgroundColor: '#FFECEC',
+    backgroundColor: `${colors.negative}18`,
     borderRadius: 22,
     flexDirection: 'row',
     gap: 10,
@@ -283,11 +287,12 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   deleteText: {
-    color: '#D64545',
+    color: colors.negative,
     fontSize: 16,
     fontWeight: '900',
   },
   pressed: {
     opacity: 0.72,
   },
-});
+  });
+}

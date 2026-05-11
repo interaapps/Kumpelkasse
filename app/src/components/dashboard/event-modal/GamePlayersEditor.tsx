@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/dashboard/Avatar';
 import { MiniMoneyInput } from '@/components/dashboard/event-modal/EventModalForm';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { Member } from '@/types/debt';
 import { formatEuro, parseEuroToCents } from '@/utils/debt';
 
@@ -21,6 +22,8 @@ type GamePlayersEditorProps = {
 };
 
 export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, autoBalancedCents, onChange }: GamePlayersEditorProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <>
       <Text style={styles.sectionTitle}>Spieler</Text>
@@ -85,9 +88,10 @@ export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, a
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+return StyleSheet.create({
   sectionTitle: {
-    color: '#101828',
+    color: colors.text,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   gameRow: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 24,
     gap: 12,
     padding: 14,
@@ -106,7 +110,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   gameName: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -142,13 +146,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   positive: {
-    color: '#159447',
+    color: colors.positive,
   },
   negative: {
-    color: '#D64545',
+    color: colors.negative,
   },
   muted: {
-    color: '#98A2B3',
+    color: colors.textSubtle,
   },
   warningBox: {
     alignItems: 'flex-start',
@@ -166,3 +170,4 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 });
+}

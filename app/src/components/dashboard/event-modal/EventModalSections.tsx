@@ -87,10 +87,7 @@ export function SplitEventFields({
         label="Bezahlt von"
         members={members}
         selectedId={payerId}
-        onSelect={(memberId) => {
-          setPayerId(memberId);
-          setSelectedParticipantIds((current) => Array.from(new Set([memberId, ...current])));
-        }}
+        onSelect={setPayerId}
       />
       <MoneyField value={amount} onChangeText={setAmount} label="Gesamtbetrag" />
       <FormField label="Split-Modus">
@@ -103,13 +100,9 @@ export function SplitEventFields({
         members={members}
         selectedIds={selectedParticipantIds}
         onToggle={(memberId) =>
-          setSelectedParticipantIds((current) => {
-            if (memberId === payerId) {
-              return current;
-            }
-
-            return current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId];
-          })
+          setSelectedParticipantIds((current) =>
+            current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
+          )
         }
       />
       {splitMode === 'manual' && (

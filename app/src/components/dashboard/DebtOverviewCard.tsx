@@ -100,7 +100,7 @@ function OptimizedTransfers({
               </View>
             </View>
 
-            <Text style={styles.amount}>{formatEuro(transfer.amountCents)}</Text>
+            <Text style={[styles.amount, styles.positive]}>{formatEuro(transfer.amountCents)}</Text>
           </Pressable>
         ))
       )}
@@ -125,6 +125,10 @@ function TransferExplanationModal({
     return null;
   }
 
+  const fromBalanceAfter = transfer.fromBalanceCents + transfer.amountCents;
+  const toBalanceAfter = transfer.toBalanceCents - transfer.amountCents;
+  const groupedLines = groupExplanationLines(transfer);
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.modalSafeArea} edges={['top', 'bottom']}>
@@ -148,7 +152,14 @@ function TransferExplanationModal({
           </View>
 
           <View style={styles.formulaCard}>
-            <Text style={styles.formulaTitle}>Berechnung</Text>
+            <Text style={styles.formulaTitle}>So wird optimiert</Text>
+            <Text style={styles.formulaLine}>1. Alle Events werden zuerst pro Person zu einem Netto-Saldo zusammengefasst.</Text>
+            <Text style={styles.formulaLine}>2. Danach verbindet Kumpelkasse Schuldner direkt mit Gläubigern.</Text>
+            <Text style={styles.formulaLine}>3. Jeder Schritt zahlt nur den kleineren der beiden offenen Salden aus.</Text>
+          </View>
+
+          <View style={styles.formulaCard}>
+            <Text style={styles.formulaTitle}>Berechnung dieses Schritts</Text>
             <Text style={styles.formulaLine}>Zahler-Saldo: {formatSignedEuro(transfer.fromBalanceCents)}</Text>
             <Text style={styles.formulaLine}>Empfänger-Saldo: {formatSignedEuro(transfer.toBalanceCents)}</Text>
             <Text style={styles.formulaResult}>
@@ -158,17 +169,36 @@ function TransferExplanationModal({
           </View>
 
           <View style={styles.formulaCard}>
-            <Text style={styles.formulaTitle}>Aus diesen Events</Text>
-            {transfer.explanationLines.map((line) => (
-              <View key={`${line.eventId}-${line.member.id}-${line.amountCents}`} style={styles.explanationRow}>
-                <Avatar initials={line.member.initials} avatarUrl={line.member.avatarUrl} size={34} />
-                <View style={styles.explanationRowText}>
-                  <Text style={styles.explanationEvent}>{line.eventTitle}</Text>
-                  <Text style={styles.explanationMember}>{line.member.name}</Text>
+            <Text style={styles.formulaTitle}>Zwischenstand danach</Text>
+            <Text style={styles.formulaLine}>
+              {transfer.from.name}: {formatSignedEuro(transfer.fromBalanceCents)} → {formatSignedEuro(fromBalanceAfter)}
+            </Text>
+            <Text style={styles.formulaLine}>
+              {transfer.to.name}: {formatSignedEuro(transfer.toBalanceCents)} → {formatSignedEuro(toBalanceAfter)}
+            </Text>
+          </View>
+
+          <View style={styles.formulaCard}>
+            <Text style={styles.formulaTitle}>Welche Events stecken dahinter?</Text>
+            {groupedLines.map((group) => (
+              <View key={group.member.id} style={styles.explanationGroup}>
+                <View style={styles.explanationGroupHeader}>
+                  <Avatar initials={group.member.initials} avatarUrl={group.member.avatarUrl} size={34} />
+                  <View style={styles.explanationRowText}>
+                    <Text style={styles.explanationEvent}>{group.member.name}</Text>
+                    <Text style={styles.explanationMember}>Netto in dieser Optimierung: {formatSignedEuro(group.totalCents)}</Text>
+                  </View>
                 </View>
-                <Text style={[styles.explanationLineAmount, line.amountCents >= 0 ? styles.positive : styles.negative]}>
-                  {formatSignedEuro(line.amountCents)}
-                </Text>
+                {group.lines.map((line) => (
+                  <View key={`${line.eventId}-${line.member.id}-${line.amountCents}`} style={styles.explanationRow}>
+                    <View style={styles.explanationRowText}>
+                      <Text style={styles.explanationEvent}>{line.eventTitle}</Text>
+                    </View>
+                    <Text style={[styles.explanationLineAmount, line.amountCents >= 0 ? styles.positive : styles.negative]}>
+                      {formatSignedEuro(line.amountCents)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             ))}
           </View>
@@ -181,6 +211,27 @@ function TransferExplanationModal({
 function formatSignedEuro(amountCents: number) {
   const prefix = amountCents > 0 ? '+' : amountCents < 0 ? '-' : '';
   return `${prefix}${formatEuro(Math.abs(amountCents))}`;
+}
+
+function groupExplanationLines(transfer: SettlementTransfer) {
+  const grouped = new Map<string, { member: SettlementTransfer['from']; totalCents: number; lines: SettlementTransfer['explanationLines'] }>();
+
+  transfer.explanationLines.forEach((line) => {
+    const existing = grouped.get(line.member.id);
+    if (existing) {
+      existing.totalCents += line.amountCents;
+      existing.lines.push(line);
+      return;
+    }
+
+    grouped.set(line.member.id, {
+      member: line.member,
+      totalCents: line.amountCents,
+      lines: [line],
+    });
+  });
+
+  return Array.from(grouped.values());
 }
 
 function DebtSection({
@@ -432,6 +483,16 @@ function createStyles(colors: DashboardColors) {
     flexDirection: 'row',
     gap: 10,
     minHeight: 48,
+  },
+  explanationGroup: {
+    gap: 8,
+    paddingTop: 4,
+  },
+  explanationGroupHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 40,
   },
   explanationRowText: {
     flex: 1,

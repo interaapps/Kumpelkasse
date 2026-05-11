@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/dashboard/Avatar';
 import { FormField } from '@/components/dashboard/event-modal/EventModalForm';
+import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
 import { Member } from '@/types/debt';
 
 type PersonSelectProps = {
@@ -19,6 +20,8 @@ type MemberMultiSelectProps = {
 };
 
 export function PersonSelect({ label, members, selectedId, onSelect }: PersonSelectProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <FormField label={label}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
@@ -35,8 +38,8 @@ export function PersonSelect({ label, members, selectedId, onSelect }: PersonSel
               initials={member.initials}
               avatarUrl={member.avatarUrl}
               size={32}
-              backgroundColor={selectedId === member.id ? '#FFFFFF' : '#E9ECEF'}
-              color={selectedId === member.id ? '#14532D' : '#475467'}
+              backgroundColor={selectedId === member.id ? colors.card : colors.cardMuted}
+              color={selectedId === member.id ? colors.positive : colors.textMuted}
             />
             <Text style={[styles.personChipText, selectedId === member.id && styles.personChipTextSelected]}>
               {member.name}
@@ -54,6 +57,8 @@ export function MemberMultiSelect({
   selectedIds,
   onToggle,
 }: MemberMultiSelectProps) {
+  const colors = useDashboardTheme();
+  const styles = createStyles(colors);
   return (
     <FormField label={label}>
       <View style={styles.participantGrid}>
@@ -72,8 +77,8 @@ export function MemberMultiSelect({
                 initials={member.initials}
                 avatarUrl={member.avatarUrl}
                 size={34}
-                backgroundColor={selected ? '#FFFFFF' : '#EEF1F4'}
-                color={selected ? '#14532D' : '#475467'}
+                backgroundColor={selected ? colors.card : colors.cardMuted}
+                color={selected ? colors.positive : colors.textMuted}
               />
               <Text style={[styles.participantName, selected && styles.participantNameSelected]}>{member.name}</Text>
             </Pressable>
@@ -84,14 +89,15 @@ export function MemberMultiSelect({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: DashboardColors) {
+return StyleSheet.create({
   chipRow: {
     gap: 10,
     paddingRight: 20,
   },
   personChip: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     flexDirection: 'row',
     gap: 9,
@@ -100,15 +106,15 @@ const styles = StyleSheet.create({
     paddingRight: 15,
   },
   personChipSelected: {
-    backgroundColor: '#1D3D2A',
+    backgroundColor: colors.button,
   },
   personChipText: {
-    color: '#475467',
+    color: colors.textMuted,
     fontSize: 15,
     fontWeight: '800',
   },
   personChipTextSelected: {
-    color: '#FFFFFF',
+    color: colors.buttonText,
   },
   participantGrid: {
     flexDirection: 'row',
@@ -117,7 +123,7 @@ const styles = StyleSheet.create({
   },
   participantChip: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: 999,
     flexDirection: 'row',
     gap: 8,
@@ -126,17 +132,18 @@ const styles = StyleSheet.create({
     paddingRight: 14,
   },
   participantChipSelected: {
-    backgroundColor: '#E5F6EA',
+    backgroundColor: `${colors.positive}18`,
   },
   participantName: {
-    color: '#475467',
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: '800',
   },
   participantNameSelected: {
-    color: '#14532D',
+    color: colors.positive,
   },
   pressed: {
     opacity: 0.72,
   },
 });
+}
