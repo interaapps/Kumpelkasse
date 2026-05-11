@@ -1,3 +1,4 @@
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -36,22 +37,27 @@ export function TopGroupSelector({
 }: TopGroupSelectorProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
+  const useGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
 
   return (
     <View style={styles.container}>
       <Pressable style={({ pressed }) => pressed && styles.pressed} onPress={onOpenProfile}>
         <Avatar initials={currentUser.initials} avatarUrl={currentUser.avatarUrl} size={48} />
       </Pressable>
-      <Pressable style={({ pressed }) => [styles.groupButton, pressed && styles.pressed]} onPress={onOpen}>
-        <Text style={styles.groupName}>{selectedGroup?.name ?? 'Gruppe waehlen'}</Text>
-        <SymbolView
-          name={{ ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }}
-          size={14}
-          tintColor={colors.textMuted}
-        />
+      <Pressable style={({ pressed }) => [styles.flexTouch, pressed && styles.pressed]} onPress={onOpen}>
+        <TopBarSurface useGlass={useGlass} style={styles.groupButton}>
+          <Text style={styles.groupName}>{selectedGroup?.name ?? 'Gruppe waehlen'}</Text>
+          <SymbolView
+            name={{ ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }}
+            size={14}
+            tintColor={colors.textMuted}
+          />
+        </TopBarSurface>
       </Pressable>
-      <Pressable style={({ pressed }) => [styles.inviteButton, pressed && styles.pressed]} onPress={onOpenInvite}>
-        <SymbolView name={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }} size={22} tintColor={colors.text} />
+      <Pressable style={({ pressed }) => [styles.iconTouch, pressed && styles.pressed]} onPress={onOpenInvite}>
+        <TopBarSurface useGlass={useGlass} style={styles.inviteButton}>
+          <SymbolView name={{ ios: 'person.badge.plus', android: 'person_add', web: 'person_add' }} size={22} tintColor={colors.text} />
+        </TopBarSurface>
       </Pressable>
 
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -122,6 +128,28 @@ export function TopGroupSelector({
   );
 }
 
+function TopBarSurface({
+  children,
+  style,
+  tintColor,
+  useGlass,
+}: {
+  children: React.ReactNode;
+  style: object;
+  tintColor?: string;
+  useGlass: boolean;
+}) {
+  if (useGlass) {
+    return (
+      <GlassView glassEffectStyle="regular" tintColor={tintColor} isInteractive style={style}>
+        {children}
+      </GlassView>
+    );
+  }
+
+  return <View style={[style, { backgroundColor: tintColor }]}>{children}</View>;
+}
+
 function JoinByLinkForm({
   onSubmit,
   styles,
@@ -164,16 +192,22 @@ function createStyles(colors: DashboardColors) {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 8,
+  },
+  flexTouch: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  iconTouch: {
+    width: 48,
+    height: 48,
   },
   groupButton: {
     alignItems: 'center',
-    backgroundColor: colors.cardMuted,
     borderRadius: 999,
     flexDirection: 'row',
     gap: 8,
-    minHeight: 46,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: 18,
   },
   groupName: {
@@ -183,7 +217,6 @@ function createStyles(colors: DashboardColors) {
   },
   inviteButton: {
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderRadius: 999,
     height: 48,
     justifyContent: 'center',

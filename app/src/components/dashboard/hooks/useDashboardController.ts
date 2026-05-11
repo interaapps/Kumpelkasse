@@ -44,7 +44,6 @@ export function useDashboardController() {
   const [inviteVisible, setInviteVisible] = useState(false);
   const [groupCreationVisible, setGroupCreationVisible] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
-  const [eventBrowserVisible, setEventBrowserVisible] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<DebtEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<DebtEvent | null>(null);
@@ -303,7 +302,6 @@ export function useDashboardController() {
     setSelectedEvent(null);
     setEditingEvent(null);
     setEventPreset(null);
-    setEventBrowserVisible(false);
     setActiveModal(null);
   }
 
@@ -366,7 +364,6 @@ export function useDashboardController() {
       isRestoringSession,
       joinPromptGroupId,
       profileVisible,
-      eventBrowserVisible,
       currentUserId,
       selectedEvent,
       selectedGroupId,
@@ -390,7 +387,6 @@ export function useDashboardController() {
       refresh,
       setActiveModal,
       setEditingEvent,
-      setEventBrowserVisible,
       setEventPreset,
       setGroupCreationVisible,
       setGroupSelectorVisible,

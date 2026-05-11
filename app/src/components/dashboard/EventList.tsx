@@ -73,9 +73,9 @@ function createStyles(colors: DashboardColors) {
     moreButton: {
       backgroundColor: colors.card,
       borderRadius: 999,
-      minHeight: 38,
+      minHeight: 42,
       justifyContent: 'center',
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
     },
     moreText: {
       color: colors.text,

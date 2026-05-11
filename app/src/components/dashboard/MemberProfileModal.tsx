@@ -1,12 +1,13 @@
 import { SymbolView, SymbolViewProps } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchRelationshipHistory } from '@/api/debt-api';
 import { Avatar } from '@/components/dashboard/Avatar';
 import { FormTextInput } from '@/components/dashboard/event-modal/EventModalForm';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
+import { BottomTabInset } from '@/constants/theme';
 import { DebtEvent, Member, RelationshipHistory } from '@/types/debt';
 import { formatEuro, getInitials } from '@/utils/debt';
 
@@ -18,6 +19,7 @@ type MemberProfileModalProps = {
   onClose: () => void;
   onSave: (member: Member) => void | Promise<void>;
   onLogout?: () => void | Promise<void>;
+  presentation?: 'modal' | 'screen';
 };
 
 type PaymentCardAction = {
@@ -34,8 +36,10 @@ export function MemberProfileModal({
   onClose,
   onSave,
   onLogout,
+  presentation = 'modal',
 }: MemberProfileModalProps) {
   const colors = useDashboardTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
   const [draft, setDraft] = useState<Member | null>(member);
   const [relationshipHistory, setRelationshipHistory] = useState<RelationshipHistory | null>(null);
@@ -102,45 +106,68 @@ export function MemberProfileModal({
     await onLogout?.();
   }
 
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+  const content = (
+    <View style={styles.safeArea}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          presentation === 'screen' ? { paddingBottom: insets.bottom + BottomTabInset + 20 } : null,
+        ]}>
         <View style={styles.header}>
-          <Pressable style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]} onPress={onClose}>
-            <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
-          </Pressable>
+          <View style={styles.headerSide}>
+            {presentation === 'modal' ? (
+              <Pressable style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]} onPress={onClose}>
+                <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={17} tintColor={colors.text} />
+              </Pressable>
+            ) : null}
+          </View>
           <View style={styles.headerText}>
             <Text style={styles.title}>{member.name}</Text>
           </View>
-          {isOwnProfile && (
-            <Pressable style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]} onPress={handleSave}>
-              <Text style={styles.saveText}>Sichern</Text>
-            </Pressable>
-          )}
+          <View style={[styles.headerSide, styles.headerSideRight]}>
+            {isOwnProfile ? (
+              <Pressable style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]} onPress={handleSave}>
+                <Text style={styles.saveText}>Sichern</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.headerSpacer} />
+            )}
+          </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <View style={styles.profileCard}>
-            <Avatar initials={draft.initials} avatarUrl={draft.avatarUrl} size={78} />
-            <Text style={styles.profileName}>{draft.name}</Text>
-            <Text style={styles.profileMeta}>
-              {isOwnProfile ? 'Zahlungsinfos lokal bearbeiten' : 'Kontakt- und Zahlungsinfos'}
-            </Text>
-          </View>
+        <View style={styles.profileCard}>
+          <Avatar initials={draft.initials} avatarUrl={draft.avatarUrl} size={78} />
+          <Text style={styles.profileName}>{draft.name}</Text>
+          <Text style={styles.profileMeta}>
+            {isOwnProfile ? 'Zahlungsinfos lokal bearbeiten' : 'Kontakt- und Zahlungsinfos'}
+          </Text>
+        </View>
 
-          {isOwnProfile ? (
-            <ProfileEditCards draft={draft} setDraft={setDraft} onLogout={handleLogout} />
-          ) : (
-            <>
-              <PaymentInfoCards member={member} />
-              <RelationshipSection
-                history={relationshipHistory}
-                loading={relationshipLoading}
-                currentUserId={currentUserId}
-              />
-            </>
-          )}
-        </ScrollView>
+        {isOwnProfile ? (
+          <ProfileEditCards draft={draft} setDraft={setDraft} onLogout={handleLogout} />
+        ) : (
+          <>
+            <PaymentInfoCards member={member} />
+            <RelationshipSection
+              history={relationshipHistory}
+              loading={relationshipLoading}
+              currentUserId={currentUserId}
+            />
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+
+  if (presentation === 'screen') {
+    return content;
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        {content}
       </SafeAreaView>
     </Modal>
   );
@@ -554,7 +581,6 @@ return StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 18,
     paddingVertical: 12,
   },
   roundButton: {
@@ -564,6 +590,16 @@ return StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     width: 44,
+  },
+  headerSpacer: {
+    width: 88,
+    height: 44,
+  },
+  headerSide: {
+    justifyContent: 'center',
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
   },
   headerText: {
     flex: 1,
@@ -620,10 +656,7 @@ return StyleSheet.create({
     gap: 14,
   },
   formCard: {
-    backgroundColor: colors.card,
-    borderRadius: 28,
     gap: 16,
-    padding: 18,
   },
   logoutButton: {
     alignItems: 'center',
