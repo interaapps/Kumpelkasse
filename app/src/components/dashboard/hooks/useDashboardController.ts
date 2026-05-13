@@ -320,6 +320,8 @@ export function useDashboardController() {
     amountCents?: number,
     optimizedTransfer?: SettlementTransfer,
   ) {
+    const hasIntermediaryShortcut = optimizedTransfer?.routeChains.some((chain) => chain.memberIds.length > 2) ?? false;
+
     setEditingEvent(null);
     setEventPreset({
       amountCents,
@@ -328,7 +330,7 @@ export function useDashboardController() {
       optimizedPaymentChains: optimizedTransfer?.routeChains ?? [],
       optimizedAmountCents: optimizedTransfer?.amountCents,
     });
-    setActiveModal(optimizedTransfer ? 'optimized_payment' : 'payment');
+    setActiveModal(optimizedTransfer && hasIntermediaryShortcut ? 'optimized_payment' : 'payment');
   }
 
   function handleEditEvent(event: DebtEvent) {

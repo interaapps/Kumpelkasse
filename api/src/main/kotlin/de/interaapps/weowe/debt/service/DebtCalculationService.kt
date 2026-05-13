@@ -17,12 +17,12 @@ class DebtCalculationService {
         members: List<Member>,
         currentUserId: String,
     ): DashboardCalculation {
-        val balances = calculateBalances(events)
-        val directTransfers = calculateDirectTransfers(events)
-        val optimizedTransfers = calculateOptimizedTransfers(events, members, balances, directTransfers)
+        val cycleState = buildCycleState(events, members)
+        val directTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, directTransfers)
         val directRows = toUserRows(currentUserId, directTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
-        val currentBalance = balances[currentUserId] ?: 0L
+        val currentBalance = cycleState.accumulators[currentUserId]?.amountCents ?: 0L
 
         return DashboardCalculation(
             summary = Summary(
@@ -43,9 +43,9 @@ class DebtCalculationService {
         members: List<Member>,
         currentUserId: String,
     ): Settlements {
-        val balances = calculateBalances(events)
-        val directTransfers = calculateDirectTransfers(events)
-        val optimizedTransfers = calculateOptimizedTransfers(events, members, balances, directTransfers)
+        val cycleState = buildCycleState(events, members)
+        val directTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, directTransfers)
         val directRows = toUserRows(currentUserId, directTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
 
@@ -58,16 +58,10 @@ class DebtCalculationService {
         )
     }
 
-    private fun calculateBalances(events: List<DebtEvent>): Map<String, Long> =
-        buildMap {
-            events.forEach { event ->
-                event.lines.forEach { line ->
-                    put(line.memberId, (get(line.memberId) ?: 0L) + line.amountCents)
-                }
-            }
-        }
-
-    private fun calculateDirectTransfers(events: List<DebtEvent>): List<DirectTransfer> {
+    private fun calculateDirectTransfers(
+        events: List<DebtEvent>,
+        activeEventIdsByMember: Map<String, Set<String>>,
+    ): List<DirectTransfer> {
         val aggregated = linkedMapOf<Pair<String, String>, MutableDirectTransfer>()
 
         events.forEach { event ->
@@ -88,6 +82,15 @@ class DebtCalculationService {
                 val debtor = debtors[debtorIndex]
                 val creditor = creditors[creditorIndex]
                 val amount = minOf(debtor.amountCents, creditor.amountCents)
+                val debtorActiveEvents = activeEventIdsByMember[debtor.memberId].orEmpty()
+                val creditorActiveEvents = activeEventIdsByMember[creditor.memberId].orEmpty()
+                if (event.id !in debtorActiveEvents || event.id !in creditorActiveEvents) {
+                    debtor.amountCents -= amount
+                    creditor.amountCents -= amount
+                    if (debtor.amountCents == 0L) debtorIndex += 1
+                    if (creditor.amountCents == 0L) creditorIndex += 1
+                    continue
+                }
                 val key = debtor.memberId to creditor.memberId
                 val transfer = aggregated.getOrPut(key) {
                     MutableDirectTransfer(
@@ -151,35 +154,33 @@ class DebtCalculationService {
     }
 
     private fun calculateOptimizedTransfers(
-        events: List<DebtEvent>,
         members: List<Member>,
-        balances: Map<String, Long>,
+        accumulators: Map<String, SettlementAccumulator>,
         directTransfers: List<DirectTransfer>,
     ): List<SettlementTransfer> {
         val memberMap = members.associateBy { it.id }
-        val accumulators = buildAccumulators(events, memberMap)
-        val debtors = balances.entries
-            .filter { it.value < 0 && memberMap[it.key] != null }
+        val debtors = accumulators.entries
+            .filter { it.value.amountCents < 0 && memberMap[it.key] != null }
             .map {
                 OpenBalance(
                     memberId = it.key,
-                    amountCents = abs(it.value),
-                    originalBalanceCents = it.value,
-                    eventIds = accumulators[it.key]?.eventIds ?: emptySet(),
-                    explanationLines = accumulators[it.key]?.explanationLines ?: emptyList(),
+                    amountCents = abs(it.value.amountCents),
+                    originalBalanceCents = it.value.amountCents,
+                    eventIds = it.value.eventIds.toSet(),
+                    explanationLines = it.value.explanationLines.toList(),
                 )
             }
             .sortedWith(compareByDescending<OpenBalance> { it.amountCents }.thenBy { it.memberId })
             .toMutableList()
-        val creditors = balances.entries
-            .filter { it.value > 0 && memberMap[it.key] != null }
+        val creditors = accumulators.entries
+            .filter { it.value.amountCents > 0 && memberMap[it.key] != null }
             .map {
                 OpenBalance(
                     memberId = it.key,
-                    amountCents = it.value,
-                    originalBalanceCents = it.value,
-                    eventIds = accumulators[it.key]?.eventIds ?: emptySet(),
-                    explanationLines = accumulators[it.key]?.explanationLines ?: emptyList(),
+                    amountCents = it.value.amountCents,
+                    originalBalanceCents = it.value.amountCents,
+                    eventIds = it.value.eventIds.toSet(),
+                    explanationLines = it.value.explanationLines.toList(),
                 )
             }
             .sortedWith(compareByDescending<OpenBalance> { it.amountCents }.thenBy { it.memberId })
@@ -220,27 +221,45 @@ class DebtCalculationService {
         return transfers.sortedByDescending { it.amountCents }
     }
 
-    private fun buildAccumulators(
+    private fun buildCycleState(
         events: List<DebtEvent>,
-        memberMap: Map<String, Member>,
-    ): Map<String, SettlementAccumulator> {
-        val accumulators = mutableMapOf<String, SettlementAccumulator>()
-        events.forEach { event ->
+        members: List<Member>,
+    ): CycleState {
+        val memberMap = members.associateBy { it.id }
+        val accumulators = mutableMapOf<String, MutableCycleAccumulator>()
+        events.sortedBy { it.createdAt }.forEach { event ->
             event.lines.forEach { line ->
-                val accumulator = accumulators.getOrPut(line.memberId) { SettlementAccumulator() }
+                val accumulator = accumulators.getOrPut(line.memberId) { MutableCycleAccumulator() }
+                if (accumulator.amountCents == 0L && accumulator.currentEventIds.isNotEmpty()) {
+                    accumulator.currentEventIds.clear()
+                    accumulator.currentExplanationLines.clear()
+                }
                 accumulator.amountCents += line.amountCents
-                accumulator.eventIds += event.id
+                accumulator.currentEventIds += event.id
                 memberMap[line.memberId]?.let { member ->
-                    accumulator.explanationLines += SettlementExplanationLine(
+                    accumulator.currentExplanationLines += SettlementExplanationLine(
                         eventId = event.id,
                         eventTitle = event.title,
                         member = member,
                         amountCents = line.amountCents,
                     )
                 }
+                if (accumulator.amountCents == 0L) {
+                    accumulator.lastClosedEventIds.clear()
+                    accumulator.lastClosedEventIds += accumulator.currentEventIds
+                    accumulator.lastClosedExplanationLines.clear()
+                    accumulator.lastClosedExplanationLines += accumulator.currentExplanationLines
+                }
             }
         }
-        return accumulators
+
+        val finalized = accumulators.mapValues { (_, accumulator) ->
+            accumulator.toFinalAccumulator()
+        }
+        return CycleState(
+            accumulators = finalized,
+            activeEventIdsByMember = finalized.mapValues { (_, accumulator) -> accumulator.eventIds.toSet() },
+        )
     }
 
     private fun toUserRows(
@@ -396,6 +415,34 @@ private data class SettlementAccumulator(
     var amountCents: Long = 0,
     val eventIds: MutableSet<String> = mutableSetOf(),
     val explanationLines: MutableList<SettlementExplanationLine> = mutableListOf(),
+)
+
+private data class MutableCycleAccumulator(
+    var amountCents: Long = 0,
+    val currentEventIds: MutableSet<String> = linkedSetOf(),
+    val currentExplanationLines: MutableList<SettlementExplanationLine> = mutableListOf(),
+    val lastClosedEventIds: MutableSet<String> = linkedSetOf(),
+    val lastClosedExplanationLines: MutableList<SettlementExplanationLine> = mutableListOf(),
+) {
+    fun toFinalAccumulator(): SettlementAccumulator =
+        if (amountCents == 0L) {
+            SettlementAccumulator(
+                amountCents = 0,
+                eventIds = lastClosedEventIds.toMutableSet(),
+                explanationLines = lastClosedExplanationLines.toMutableList(),
+            )
+        } else {
+            SettlementAccumulator(
+                amountCents = amountCents,
+                eventIds = currentEventIds.toMutableSet(),
+                explanationLines = currentExplanationLines.toMutableList(),
+            )
+        }
+}
+
+private data class CycleState(
+    val accumulators: Map<String, SettlementAccumulator>,
+    val activeEventIdsByMember: Map<String, Set<String>>,
 )
 
 private data class OpenBalance(

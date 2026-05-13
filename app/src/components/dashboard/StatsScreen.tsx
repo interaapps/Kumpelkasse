@@ -64,7 +64,12 @@ export function StatsScreen() {
                 />
               </DashboardPageHeader>
               <View style={styles.body}>
-                <GroupStatsCard stats={dashboard.stats} onOpenGameHistory={() => setGameHistoryVisible(true)} />
+                <GroupStatsCard
+                  stats={dashboard.stats}
+                  members={dashboard.members}
+                  events={dashboard.events}
+                  onOpenGameHistory={() => setGameHistoryVisible(true)}
+                />
               </View>
             </ScrollView>
           </WebScreenShell>

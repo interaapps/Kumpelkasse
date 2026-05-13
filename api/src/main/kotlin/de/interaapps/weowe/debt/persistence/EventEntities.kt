@@ -26,7 +26,7 @@ class DebtEventEntity(
     @Column(nullable = false)
     var groupId: String = "",
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     var type: EventType = EventType.DIRECT,
     @Column(nullable = false)
     var title: String = "",

@@ -280,4 +280,70 @@ class DebtCalculationServiceTest {
         assertEquals("a", settlements.optimizedTransfers[2].from.id)
         assertEquals("d", settlements.optimizedTransfers[2].to.id)
     }
+
+    @Test
+    fun `optimized explanation only keeps events since the last zero balance`() {
+        val events = listOf(
+            DebtEvent(
+                id = "old-1",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Konrad schuldet Julian alt",
+                createdAt = Instant.parse("2026-05-09T10:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "konrad", amountCents = -1_000),
+                    LedgerLine(memberId = "julian", amountCents = 1_000),
+                ),
+            ),
+            DebtEvent(
+                id = "old-2",
+                groupId = "friends",
+                type = EventType.PAYMENT,
+                title = "Konrad bezahlt Julian alt",
+                createdAt = Instant.parse("2026-05-09T11:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "konrad", amountCents = 1_000),
+                    LedgerLine(memberId = "julian", amountCents = -1_000),
+                ),
+            ),
+            DebtEvent(
+                id = "new-1",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Konrad schuldet Julian neu",
+                createdAt = Instant.parse("2026-05-09T12:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "konrad", amountCents = -2_500),
+                    LedgerLine(memberId = "julian", amountCents = 2_500),
+                ),
+            ),
+            DebtEvent(
+                id = "new-2",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Julian schuldet Matti neu",
+                createdAt = Instant.parse("2026-05-09T12:05:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "julian", amountCents = -2_500),
+                    LedgerLine(memberId = "matti", amountCents = 2_500),
+                ),
+            ),
+        )
+
+        val result = service.calculateSummary(
+            events = events,
+            members = listOf(
+                Member(id = "julian", name = "Julian", initials = "J"),
+                Member(id = "matti", name = "Matti", initials = "M"),
+                Member(id = "konrad", name = "Konrad", initials = "K"),
+            ),
+            currentUserId = "julian",
+        )
+
+        val transfer = result.optimizedTransfers.single()
+        assertEquals(2, transfer.explanationLines.size)
+        assertEquals(setOf("new-1", "new-2"), transfer.explanationLines.map { it.eventId }.toSet())
+        assertEquals(1, transfer.routeChains.size)
+        assertEquals(setOf("new-1", "new-2"), transfer.routeChains.single().eventIds.toSet())
+    }
 }

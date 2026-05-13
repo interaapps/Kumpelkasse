@@ -8,6 +8,7 @@ import { OptimizedPaymentChain, SettlementRow, SettlementTransfer } from '@/type
 import { formatEuro } from '@/utils/debt';
 
 type DebtOverviewCardProps = {
+  currentUserId: string;
   directOwedByMe: SettlementRow[];
   directOwedToMe: SettlementRow[];
   optimizedOwedByMe: SettlementRow[];
@@ -21,6 +22,7 @@ type DebtOverviewCardProps = {
 type DebtMode = 'direct' | 'optimized';
 
 export function DebtOverviewCard({
+  currentUserId,
   directOwedByMe,
   directOwedToMe,
   optimizedOwedByMe,
@@ -69,7 +71,10 @@ export function DebtOverviewCard({
             onCreatePayment={(row) => {
               if (mode === 'optimized') {
                 const transfer = optimizedTransfers.find(
-                  (candidate) => candidate.to.id === row.member.id && candidate.amountCents === row.amountCents,
+                  (candidate) =>
+                    candidate.from.id === currentUserId &&
+                    candidate.to.id === row.member.id &&
+                    candidate.amountCents === row.amountCents,
                 );
                 if (transfer) {
                   onCreateOptimizedPayment?.(transfer);
@@ -99,6 +104,7 @@ export function DebtOverviewCard({
             <>
               <View style={styles.separator} />
               <OptimizedTransfers
+                currentUserId={currentUserId}
                 transfers={optimizedTransfers}
                 onSelectTransfer={setSelectedTransfer}
                 onCreateOptimizedPayment={onCreateOptimizedPayment}
@@ -140,12 +146,14 @@ function ModeButton({
 }
 
 function OptimizedTransfers({
+  currentUserId,
   transfers,
   onSelectTransfer,
   onCreateOptimizedPayment,
   styles,
   colors,
 }: {
+  currentUserId: string;
   transfers: SettlementTransfer[];
   onSelectTransfer: (transfer: SettlementTransfer) => void;
   onCreateOptimizedPayment?: (transfer: SettlementTransfer) => void;
@@ -186,14 +194,16 @@ function OptimizedTransfers({
             <Text style={styles.transferSummaryText}>{describeRouteChains(transfer.routeChains)}</Text>
             <View style={styles.transferFooter}>
               <Text style={styles.transferHint}>Basiert auf {transfer.eventCount} Event{transfer.eventCount === 1 ? '' : 's'}</Text>
-              <Pressable
-                style={({ pressed }) => [styles.payButton, pressed && styles.pressed]}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  onCreateOptimizedPayment?.(transfer);
-                }}>
-                <Text style={styles.payButtonText}>Bezahlt</Text>
-              </Pressable>
+              {transfer.from.id === currentUserId ? (
+                <Pressable
+                  style={({ pressed }) => [styles.payButton, pressed && styles.pressed]}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    onCreateOptimizedPayment?.(transfer);
+                  }}>
+                  <Text style={styles.payButtonText}>Bezahlt</Text>
+                </Pressable>
+              ) : null}
             </View>
           </Pressable>
         ))

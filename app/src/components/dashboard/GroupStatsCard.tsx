@@ -1,18 +1,32 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/dashboard/Avatar';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { EMPTY_GROUP_STATS, GroupStats, MemberStat } from '@/types/debt';
-import { formatEuro } from '@/utils/debt';
+import { DebtEvent, EMPTY_GROUP_STATS, GroupStats, Member, MemberStat } from '@/types/debt';
+import { formatEuro, getMemberBalance } from '@/utils/debt';
 
 type GroupStatsCardProps = {
   stats?: GroupStats | null;
+  members: Member[];
+  events: DebtEvent[];
   onOpenGameHistory: () => void;
 };
 
-export function GroupStatsCard({ stats, onOpenGameHistory }: GroupStatsCardProps) {
+export function GroupStatsCard({ stats, members, events, onOpenGameHistory }: GroupStatsCardProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
   const safeStats = stats ?? EMPTY_GROUP_STATS;
+  const memberBalances = members
+    .map((member) => ({
+      member,
+      balanceCents: getMemberBalance(events, member.id),
+    }))
+    .sort((left, right) => {
+      if (Math.abs(right.balanceCents) !== Math.abs(left.balanceCents)) {
+        return Math.abs(right.balanceCents) - Math.abs(left.balanceCents);
+      }
+      return left.member.name.localeCompare(right.member.name, 'de');
+    });
 
   return (
     <View style={styles.card}>
@@ -41,6 +55,36 @@ export function GroupStatsCard({ stats, onOpenGameHistory }: GroupStatsCardProps
         <MemberHighlight label="Aktivstes Mitglied" stat={safeStats.mostActiveMember} emptyText="Noch keine Aktivitaet" countMode />
         <MemberHighlight label="Game Gewinner" stat={safeStats.biggestGameWinner} emptyText="Noch keine Games" positive />
         <MemberHighlight label="Game Verlierer" stat={safeStats.biggestGameLoser} emptyText="Noch keine Games" negative />
+      </View>
+
+      <View style={styles.memberListCard}>
+        <Text style={styles.memberListTitle}>Alle Mitglieder</Text>
+        <View style={styles.memberList}>
+          {memberBalances.map(({ member, balanceCents }) => (
+            <View key={member.id} style={styles.memberBalanceRow}>
+              <Avatar
+                initials={member.initials}
+                avatarUrl={member.avatarUrl}
+                size={42}
+                backgroundColor={balanceCents >= 0 ? `${colors.positive}22` : `${colors.negative}22`}
+                color={balanceCents >= 0 ? colors.positive : colors.negative}
+              />
+              <View style={styles.memberBalanceText}>
+                <Text style={styles.memberBalanceName}>{member.name}</Text>
+                <Text style={styles.memberBalanceHint}>
+                  {balanceCents > 0 ? 'bekommt Geld' : balanceCents < 0 ? 'schuldet Geld' : 'ausgeglichen'}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.memberBalanceValue,
+                  balanceCents > 0 ? styles.positive : balanceCents < 0 ? styles.negative : styles.neutral,
+                ]}>
+                {formatEuro(Math.abs(balanceCents), { signed: balanceCents > 0 })}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -165,6 +209,44 @@ function createStyles(colors: DashboardColors) {
     },
     leaderboard: {
       gap: 12,
+    },
+    memberListCard: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      gap: 14,
+      padding: 18,
+    },
+    memberListTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '900',
+      letterSpacing: -0.3,
+    },
+    memberList: {
+      gap: 12,
+    },
+    memberBalanceRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 12,
+    },
+    memberBalanceText: {
+      flex: 1,
+      gap: 2,
+    },
+    memberBalanceName: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    memberBalanceHint: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    memberBalanceValue: {
+      fontSize: 15,
+      fontWeight: '900',
     },
     memberRow: {
       backgroundColor: colors.card,

@@ -7,6 +7,7 @@ import { DashboardAuthGate, WebScreenShell } from '@/components/dashboard/Dashbo
 import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 import { EventCard } from '@/components/dashboard/EventCard';
 import { EventDetailsModal } from '@/components/dashboard/EventDetailsModal';
+import { EventModal } from '@/components/dashboard/EventModal';
 import { InviteModal } from '@/components/dashboard/InviteModal';
 import { JoinInviteModal } from '@/components/dashboard/JoinInviteModal';
 import { MemberProfileModal } from '@/components/dashboard/MemberProfileModal';
@@ -170,6 +171,24 @@ export function EventsScreen() {
               )}
             </ScrollView>
           </WebScreenShell>
+
+          {isFocused && state.activeModal && (
+            <EventModal
+              visible={Boolean(state.activeModal)}
+              type={state.activeModal}
+              groupId={dashboard.selectedGroupId ?? dashboard.groups[0]?.id ?? ''}
+              members={dashboard.members}
+              currentUserId={currentUserId}
+              initialEvent={state.editingEvent ?? undefined}
+              preset={state.eventPreset ?? undefined}
+              onClose={() => {
+                actions.setActiveModal(null);
+                actions.setEditingEvent(null);
+                actions.setEventPreset(null);
+              }}
+              onSubmit={actions.handleSubmitEvent}
+            />
+          )}
 
           <EventDetailsModal
             event={state.selectedEvent}
