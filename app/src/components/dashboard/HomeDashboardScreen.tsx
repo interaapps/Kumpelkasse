@@ -109,6 +109,7 @@ export function HomeDashboardScreen() {
 
                 <EventList
                   events={[...state.dashboard.events].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                  members={state.dashboard.members}
                   currentUserId={state.currentUserId}
                   onSelectEvent={actions.setSelectedEvent}
                   onShowAll={() => router.navigate('/events')}

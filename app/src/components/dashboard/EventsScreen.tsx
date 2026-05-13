@@ -154,7 +154,13 @@ export function EventsScreen() {
               ) : (
                 <View style={styles.eventList}>
                   {feed.events.map((item) => (
-                    <EventCard key={item.id} event={item} currentUserId={currentUserId} onPress={actions.setSelectedEvent} />
+                    <EventCard
+                      key={item.id}
+                      event={item}
+                      members={dashboard.members}
+                      currentUserId={currentUserId}
+                      onPress={actions.setSelectedEvent}
+                    />
                   ))}
                   <View style={styles.footer}>
                     {feed.isLoadingMore ? (

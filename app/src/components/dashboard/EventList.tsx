@@ -2,16 +2,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EventCard } from '@/components/dashboard/EventCard';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent } from '@/types/debt';
+import { DebtEvent, Member } from '@/types/debt';
 
 type EventListProps = {
   events: DebtEvent[];
+  members: Member[];
   currentUserId: string;
   onSelectEvent: (event: DebtEvent) => void;
   onShowAll: () => void;
 };
 
-export function EventList({ events, currentUserId, onSelectEvent, onShowAll }: EventListProps) {
+export function EventList({ events, members, currentUserId, onSelectEvent, onShowAll }: EventListProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
 
@@ -35,7 +36,7 @@ export function EventList({ events, currentUserId, onSelectEvent, onShowAll }: E
           </View>
         ) : (
           events.map((event) => (
-            <EventCard key={event.id} event={event} currentUserId={currentUserId} onPress={onSelectEvent} />
+            <EventCard key={event.id} event={event} members={members} currentUserId={currentUserId} onPress={onSelectEvent} />
           ))
         )}
       </View>
