@@ -6,6 +6,7 @@ import de.interaapps.weowe.debt.domain.GameMode
 import de.interaapps.weowe.debt.domain.Group
 import de.interaapps.weowe.debt.domain.LedgerLine
 import de.interaapps.weowe.debt.domain.Member
+import de.interaapps.weowe.debt.domain.OptimizedPaymentChain
 import de.interaapps.weowe.debt.domain.SplitShare
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -74,6 +75,7 @@ fun DebtEventEntity.toDomain(): DebtEvent =
         splitParticipantIds = splitDetails?.participantIdsJson.fromJsonList(),
         splitShares = splitDetails?.sharesJson.fromJsonTypedList(),
         gameEntries = gameDetails?.entriesJson.fromJsonTypedList(),
+        optimizedPaymentChains = optimizedPaymentDetails?.chainsJson.fromJsonTypedList(),
     )
 
 fun DebtEvent.toEntity(): DebtEventEntity {
@@ -87,6 +89,7 @@ fun DebtEvent.toEntity(): DebtEventEntity {
     )
     eventEntity.splitDetails = toSplitDetailsEntity(eventEntity)
     eventEntity.gameDetails = toGameDetailsEntity(eventEntity)
+    eventEntity.optimizedPaymentDetails = toOptimizedPaymentDetailsEntity(eventEntity)
     eventEntity.lines = lines.map {
         LedgerLineEntity(memberId = it.memberId, amountCents = it.amountCents, event = eventEntity)
     }.toMutableList()
@@ -114,6 +117,16 @@ fun DebtEvent.toGameDetailsEntity(event: DebtEventEntity): DebtEventGameDetailsE
         gameMode = gameMode ?: GameMode.POKER,
         bankMemberId = bankMemberId,
         entriesJson = gameEntries.toJsonList(),
+    )
+}
+
+fun DebtEvent.toOptimizedPaymentDetailsEntity(event: DebtEventEntity): DebtEventOptimizedPaymentDetailsEntity? {
+    if (type != de.interaapps.weowe.debt.domain.EventType.OPTIMIZED_PAYMENT) {
+        return null
+    }
+    return DebtEventOptimizedPaymentDetailsEntity(
+        event = event,
+        chainsJson = optimizedPaymentChains.toJsonList(),
     )
 }
 

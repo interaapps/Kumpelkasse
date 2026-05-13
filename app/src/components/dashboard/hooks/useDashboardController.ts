@@ -23,13 +23,15 @@ import { clearStoredSessionToken, loadStoredSessionToken, storeSessionToken } fr
 import { syncBackgroundRefreshRegistration } from '@/background/dashboard-background-task';
 import { EventModalType } from '@/components/dashboard/EventModal';
 import { getInviteLink, parseInviteGroupId } from '@/components/dashboard/utils/invite-links';
-import { DashboardResponse, DebtEvent, Member } from '@/types/debt';
+import { DashboardResponse, DebtEvent, Member, OptimizedPaymentChain, SettlementTransfer } from '@/types/debt';
 import { syncNotificationPreferences } from '@/notifications/notification-service';
 
 type EventPreset = {
   amountCents?: number;
   fromMemberId?: string;
   toMemberId?: string;
+  optimizedPaymentChains?: OptimizedPaymentChain[];
+  optimizedAmountCents?: number;
 };
 
 export function useDashboardController() {
@@ -311,14 +313,22 @@ export function useDashboardController() {
     setActiveModal(type);
   }
 
-  function openPaymentModal(activeUserId: string, members: Member[], toMemberId?: string, amountCents?: number) {
+  function openPaymentModal(
+    activeUserId: string,
+    members: Member[],
+    toMemberId?: string,
+    amountCents?: number,
+    optimizedTransfer?: SettlementTransfer,
+  ) {
     setEditingEvent(null);
     setEventPreset({
       amountCents,
       fromMemberId: activeUserId,
       toMemberId: toMemberId ?? members.find((member) => member.id !== activeUserId)?.id,
+      optimizedPaymentChains: optimizedTransfer?.routeChains ?? [],
+      optimizedAmountCents: optimizedTransfer?.amountCents,
     });
-    setActiveModal('payment');
+    setActiveModal(optimizedTransfer ? 'optimized_payment' : 'payment');
   }
 
   function handleEditEvent(event: DebtEvent) {

@@ -19,13 +19,13 @@ export function hydrateFromEvent(
     setToMemberId: (value: string) => void;
   },
 ) {
-  if (type === 'direct' || type === 'single' || type === 'payment') {
+  if (type === 'direct' || type === 'single' || type === 'payment' || type === 'optimized_payment') {
     const fromLine =
-      type === 'payment'
+      type === 'payment' || type === 'optimized_payment'
         ? event.lines.find((line) => line.amountCents > 0)
         : event.lines.find((line) => line.amountCents < 0);
     const toLine =
-      type === 'payment'
+      type === 'payment' || type === 'optimized_payment'
         ? event.lines.find((line) => line.amountCents < 0)
         : event.lines.find((line) => line.amountCents > 0);
     setters.setFromMemberId(fromLine?.memberId ?? setters.currentUserId);
@@ -121,6 +121,8 @@ export function getDefaultTitle(type: EventType) {
       return 'Pokerabend';
     case 'payment':
       return 'Zahlung';
+    case 'optimized_payment':
+      return 'Optimierte Zahlung';
   }
 }
 
@@ -140,6 +142,8 @@ export function getModalTitle(type: EventType, editing: boolean) {
       return 'Game erfassen';
     case 'payment':
       return 'Zahlung';
+    case 'optimized_payment':
+      return 'Optimierte Zahlung';
   }
 }
 

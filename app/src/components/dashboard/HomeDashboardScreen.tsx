@@ -83,15 +83,26 @@ export function HomeDashboardScreen() {
                 />
 
                 <DebtOverviewCard
-                  owedByMe={state.dashboard.owedByMe}
-                  owedToMe={state.dashboard.owedToMe}
+                  directOwedByMe={state.dashboard.directOwedByMe}
+                  directOwedToMe={state.dashboard.directOwedToMe}
+                  optimizedOwedByMe={state.dashboard.optimizedOwedByMe}
+                  optimizedOwedToMe={state.dashboard.optimizedOwedToMe}
                   optimizedTransfers={state.dashboard.optimizedTransfers}
                   onSelectMember={(memberId) => {
                     actions.setSelectedMemberId(memberId);
                     actions.setProfileVisible(true);
                   }}
-                  onCreatePayment={(memberId, amountCents) =>
+                  onCreateDirectPayment={(memberId, amountCents) =>
                     actions.openPaymentModal(state.currentUserId!, state.dashboard!.members, memberId, amountCents)
+                  }
+                  onCreateOptimizedPayment={(transfer) =>
+                    actions.openPaymentModal(
+                      state.currentUserId!,
+                      state.dashboard!.members,
+                      transfer.to.id,
+                      transfer.amountCents,
+                      transfer,
+                    )
                   }
                 />
 

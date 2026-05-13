@@ -33,19 +33,19 @@ export function DirectEventFields({
   return (
     <>
       <PersonSelect
-        label={type === 'payment' ? 'Bezahlt von' : type === 'single' ? 'Person schuldet' : 'Von Person'}
+        label={type === 'payment' || type === 'optimized_payment' ? 'Bezahlt von' : type === 'single' ? 'Person schuldet' : 'Von Person'}
         members={members}
         selectedId={fromMemberId}
         onSelect={setFromMemberId}
       />
       <PersonSelect
-        label={type === 'payment' ? 'Bezahlt an' : type === 'single' ? 'Person bekommt' : 'An Person'}
+        label={type === 'payment' || type === 'optimized_payment' ? 'Bezahlt an' : type === 'single' ? 'Person bekommt' : 'An Person'}
         members={members}
         selectedId={toMemberId}
         onSelect={setToMemberId}
       />
       <MoneyField value={amount} onChangeText={setAmount} label="Betrag" />
-      {(type === 'direct' || type === 'payment') && (
+      {(type === 'direct' || type === 'payment' || type === 'optimized_payment') && (
         <FormTextInput label="Notiz optional" value={note} onChangeText={setNote} placeholder="Wofür war es?" multiline />
       )}
     </>

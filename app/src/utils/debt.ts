@@ -106,6 +106,8 @@ export function getEventAccent(type: EventType) {
       return '#16A34A';
     case 'payment':
       return '#0EA5E9';
+    case 'optimized_payment':
+      return '#14B8A6';
   }
 }
 

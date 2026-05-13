@@ -11,6 +11,7 @@ import de.interaapps.weowe.debt.persistence.LedgerLineEntity
 import de.interaapps.weowe.debt.persistence.toDomain
 import de.interaapps.weowe.debt.persistence.toEntity
 import de.interaapps.weowe.debt.persistence.toGameDetailsEntity
+import de.interaapps.weowe.debt.persistence.toOptimizedPaymentDetailsEntity
 import de.interaapps.weowe.debt.persistence.toSplitDetailsEntity
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
@@ -81,6 +82,7 @@ class EventPersistenceService(
         existing.createdAt = event.createdAt
         syncSplitDetails(existing, event)
         syncGameDetails(existing, event)
+        syncOptimizedPaymentDetails(existing, event)
         existing.lines.clear()
         existing.lines += event.lines.map {
             LedgerLineEntity(
@@ -126,6 +128,23 @@ class EventPersistenceService(
                     this.gameMode = desired.gameMode
                     this.bankMemberId = desired.bankMemberId
                     this.entriesJson = desired.entriesJson
+                }
+            }
+        }
+    }
+
+    private fun syncOptimizedPaymentDetails(
+        existing: de.interaapps.weowe.debt.persistence.DebtEventEntity,
+        event: DebtEvent,
+    ) {
+        val desired = event.toOptimizedPaymentDetailsEntity(existing)
+        when {
+            desired == null -> existing.optimizedPaymentDetails = null
+            existing.optimizedPaymentDetails == null -> existing.optimizedPaymentDetails = desired
+            else -> {
+                existing.optimizedPaymentDetails?.apply {
+                    this.event = existing
+                    this.chainsJson = desired.chainsJson
                 }
             }
         }
@@ -192,6 +211,23 @@ class EventPersistenceService(
 
         if (event.type == EventType.GAME && event.gameEntries.any { it.memberId !in knownMemberIds }) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Game contains unknown players")
+        }
+
+        if (event.type == EventType.OPTIMIZED_PAYMENT) {
+            if (event.optimizedPaymentChains.isEmpty()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Optimized payments need shortcut chains")
+            }
+            if (event.optimizedPaymentChains.any { chain ->
+                    chain.memberIds.size < 2 || chain.memberIds.any { it !in knownMemberIds }
+                }
+            ) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Optimized payment chain contains unknown members")
+            }
+            val chainTotal = event.optimizedPaymentChains.sumOf { it.amountCents }
+            val paidAmount = event.lines.filter { it.amountCents > 0 }.sumOf { it.amountCents }
+            if (chainTotal != paidAmount) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Optimized payment chains must sum to the paid amount")
+            }
         }
     }
 }

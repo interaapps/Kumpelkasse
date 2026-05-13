@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/dashboard/Avatar';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent, Member } from '@/types/debt';
+import { DebtEvent, Member, OptimizedPaymentChain } from '@/types/debt';
 import { formatEuro, getEventAccent } from '@/utils/debt';
 
 type EventDetailsModalProps = {
@@ -36,7 +36,7 @@ export function EventDetailsModal({
   const accent = getEventAccent(event.type);
 
   function handleDelete() {
-    Alert.alert('Event löschen?', 'Das Event wird nur lokal aus den Mock-Daten entfernt.', [
+    Alert.alert('Event löschen?', 'Dieses Event wird dauerhaft entfernt.', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
@@ -100,6 +100,18 @@ export function EventDetailsModal({
             })}
           </View>
 
+          {event.type === 'optimized_payment' && event.optimizedPaymentChains?.length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Shortcut-Weg</Text>
+              {event.optimizedPaymentChains.map((chain, index) => (
+                <View key={`${chain.memberIds.join('-')}-${index}`} style={styles.chainRow}>
+                  <Text style={styles.chainAmount}>{formatEuro(chain.amountCents)}</Text>
+                  <Text style={styles.chainText}>{formatOptimizedChain(chain, members)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} onPress={handleDelete}>
             <SymbolView name={{ ios: 'trash.fill', android: 'delete', web: 'delete' }} size={18} tintColor={colors.negative} />
             <Text style={styles.deleteText}>Event löschen</Text>
@@ -122,6 +134,8 @@ function getTypeLabel(type: DebtEvent['type']) {
       return 'Game';
     case 'payment':
       return 'Zahlung';
+    case 'optimized_payment':
+      return 'Optimierte Zahlung';
   }
 }
 
@@ -137,7 +151,18 @@ function getIconName(type: DebtEvent['type']) {
       return { ios: 'suit.club.fill', android: 'casino', web: 'casino' } as const;
     case 'payment':
       return { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' } as const;
+    case 'optimized_payment':
+      return { ios: 'arrow.trianglehead.branch', android: 'alt_route', web: 'alt_route' } as const;
   }
+}
+
+function formatOptimizedChain(chain: OptimizedPaymentChain, members: Member[]) {
+  const memberNames = chain.memberIds.map(
+    (memberId) => members.find((member) => member.id === memberId)?.name ?? memberId,
+  );
+  const middleNames = memberNames.slice(1, -1);
+  const viaText = middleNames.length ? ` · Bezahlt durch ${middleNames.join(', ')}` : '';
+  return `${memberNames.join(' → ')}${viaText}`;
 }
 
 function formatDate(value: string) {
@@ -242,6 +267,20 @@ function createStyles(colors: DashboardColors) {
     borderRadius: 26,
     gap: 12,
     padding: 18,
+  },
+  chainRow: {
+    gap: 4,
+  },
+  chainAmount: {
+    color: colors.positive,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  chainText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   sectionTitle: {
     color: colors.text,

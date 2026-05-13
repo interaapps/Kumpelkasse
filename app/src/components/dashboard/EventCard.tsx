@@ -54,6 +54,8 @@ function getIconName(type: DebtEvent['type']): SymbolViewProps['name'] {
       return { ios: 'suit.club.fill', android: 'casino', web: 'casino' };
     case 'payment':
       return { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' };
+    case 'optimized_payment':
+      return { ios: 'arrow.trianglehead.branch', android: 'alt_route', web: 'alt_route' };
   }
 }
 

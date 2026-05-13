@@ -1,4 +1,4 @@
-export type EventType = 'direct' | 'split' | 'single' | 'game' | 'payment';
+export type EventType = 'direct' | 'split' | 'single' | 'game' | 'payment' | 'optimized_payment';
 export type EventDateRange = 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'THIS_YEAR' | 'ALL';
 export type GameMode = 'poker' | 'bank';
 
@@ -18,6 +18,13 @@ export type GameEntry = {
   cashOutCents: number;
 };
 
+export type OptimizedPaymentChain = {
+  memberIds: string[];
+  amountCents: number;
+  eventIds: string[];
+  eventTitles: string[];
+};
+
 export type DebtEvent = {
   id: string;
   groupId: string;
@@ -32,6 +39,7 @@ export type DebtEvent = {
   splitParticipantIds?: string[];
   splitShares?: SplitShare[];
   gameEntries?: GameEntry[];
+  optimizedPaymentChains?: OptimizedPaymentChain[];
 };
 
 export type Group = {
@@ -72,6 +80,7 @@ export type SettlementTransfer = {
   fromBalanceCents: number;
   toBalanceCents: number;
   explanationLines: SettlementExplanationLine[];
+  routeChains: OptimizedPaymentChain[];
 };
 
 export type SettlementExplanationLine = {
@@ -96,6 +105,10 @@ export type DashboardResponse = {
   events: DebtEvent[];
   summary: Summary;
   stats: GroupStats;
+  directOwedByMe: SettlementRow[];
+  directOwedToMe: SettlementRow[];
+  optimizedOwedByMe: SettlementRow[];
+  optimizedOwedToMe: SettlementRow[];
   owedByMe: SettlementRow[];
   owedToMe: SettlementRow[];
   optimizedTransfers: SettlementTransfer[];
@@ -171,5 +184,13 @@ export function normalizeDashboardResponse(dashboard: DashboardResponse): Dashbo
   return {
     ...dashboard,
     stats: dashboard.stats ?? EMPTY_GROUP_STATS,
+    directOwedByMe: dashboard.directOwedByMe ?? dashboard.owedByMe ?? [],
+    directOwedToMe: dashboard.directOwedToMe ?? dashboard.owedToMe ?? [],
+    optimizedOwedByMe: dashboard.optimizedOwedByMe ?? dashboard.owedByMe ?? [],
+    optimizedOwedToMe: dashboard.optimizedOwedToMe ?? dashboard.owedToMe ?? [],
+    optimizedTransfers: (dashboard.optimizedTransfers ?? []).map((transfer) => ({
+      ...transfer,
+      routeChains: transfer.routeChains ?? [],
+    })),
   };
 }

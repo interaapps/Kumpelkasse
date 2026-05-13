@@ -14,6 +14,7 @@ data class SettlementTransfer(
     val fromBalanceCents: Long,
     val toBalanceCents: Long,
     val explanationLines: List<SettlementExplanationLine> = emptyList(),
+    val routeChains: List<OptimizedPaymentChain> = emptyList(),
 )
 
 data class SettlementExplanationLine(

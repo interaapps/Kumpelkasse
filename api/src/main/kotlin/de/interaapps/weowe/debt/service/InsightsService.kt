@@ -138,7 +138,7 @@ class InsightsService(
             biggestGameWinner = biggestGameWinnerEntry?.takeIf { it.value > 0 }?.let { statFor(it.key, it.value, eventCounts) },
             biggestGameLoser = biggestGameLoserEntry?.takeIf { it.value < 0 }?.let { statFor(it.key, abs(it.value), eventCounts) },
             splitEventCount = events.count { it.type == EventType.SPLIT },
-            paymentEventCount = events.count { it.type == EventType.PAYMENT },
+            paymentEventCount = events.count { it.type == EventType.PAYMENT || it.type == EventType.OPTIMIZED_PAYMENT },
             gameEventCount = events.count { it.type == EventType.GAME },
         )
     }

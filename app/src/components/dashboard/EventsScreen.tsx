@@ -21,6 +21,7 @@ const typeFilters: Array<{ value: EventType | 'all'; label: string }> = [
   { value: 'all', label: 'Alle' },
   { value: 'split', label: 'Splits' },
   { value: 'payment', label: 'Zahlungen' },
+  { value: 'optimized_payment', label: 'Shortcut' },
   { value: 'direct', label: 'Schulden' },
   { value: 'game', label: 'Games' },
 ];

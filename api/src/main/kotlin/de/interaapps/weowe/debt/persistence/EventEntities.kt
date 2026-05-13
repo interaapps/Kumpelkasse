@@ -38,6 +38,8 @@ class DebtEventEntity(
     var splitDetails: DebtEventSplitDetailsEntity? = null,
     @OneToOne(mappedBy = "event", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.EAGER)
     var gameDetails: DebtEventGameDetailsEntity? = null,
+    @OneToOne(mappedBy = "event", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.EAGER)
+    var optimizedPaymentDetails: DebtEventOptimizedPaymentDetailsEntity? = null,
     @OneToMany(mappedBy = "event", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.EAGER)
     var lines: MutableList<LedgerLineEntity> = mutableListOf(),
 )
@@ -73,6 +75,19 @@ class DebtEventGameDetailsEntity(
     var bankMemberId: String? = null,
     @Column(length = 8_000)
     var entriesJson: String? = null,
+)
+
+@Entity
+@Table(name = "debt_event_optimized_payment_details")
+class DebtEventOptimizedPaymentDetailsEntity(
+    @Id
+    var eventId: String? = null,
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    var event: DebtEventEntity? = null,
+    @Column(length = 12_000)
+    var chainsJson: String? = null,
 )
 
 @Entity

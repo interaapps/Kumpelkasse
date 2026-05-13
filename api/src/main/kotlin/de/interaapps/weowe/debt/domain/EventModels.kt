@@ -9,7 +9,8 @@ enum class EventType(private val wireName: String) {
     SPLIT("split"),
     SINGLE("single"),
     GAME("game"),
-    PAYMENT("payment");
+    PAYMENT("payment"),
+    OPTIMIZED_PAYMENT("optimized_payment");
 
     @JsonValue
     fun toJson(): String = wireName
@@ -55,6 +56,13 @@ data class GameEntry(
     val cashOutCents: Long,
 )
 
+data class OptimizedPaymentChain(
+    val memberIds: List<String>,
+    val amountCents: Long,
+    val eventIds: List<String> = emptyList(),
+    val eventTitles: List<String> = emptyList(),
+)
+
 data class DebtEvent(
     val id: String,
     val groupId: String,
@@ -69,6 +77,7 @@ data class DebtEvent(
     val splitParticipantIds: List<String> = emptyList(),
     val splitShares: List<SplitShare> = emptyList(),
     val gameEntries: List<GameEntry> = emptyList(),
+    val optimizedPaymentChains: List<OptimizedPaymentChain> = emptyList(),
 )
 
 data class EventPage(

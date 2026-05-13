@@ -19,6 +19,7 @@ internal fun UpsertDebtEventRequest.toDebtEvent(id: String): DebtEvent =
         splitParticipantIds = splitParticipantIds.distinct(),
         splitShares = splitShares,
         gameEntries = gameEntries,
+        optimizedPaymentChains = optimizedPaymentChains,
     )
 
 internal fun String?.blankToNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }

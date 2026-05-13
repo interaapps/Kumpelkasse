@@ -16,7 +16,7 @@ import {
   normalizeLines,
 } from '@/components/dashboard/event-modal/event-modal-utils';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent, EventType, GameMode, Member } from '@/types/debt';
+import { DebtEvent, EventType, GameMode, Member, OptimizedPaymentChain } from '@/types/debt';
 import { formatEuro, parseEuroToCents } from '@/utils/debt';
 
 export type EventModalType = EventType;
@@ -32,6 +32,8 @@ type EventModalProps = {
     amountCents?: number;
     fromMemberId?: string;
     toMemberId?: string;
+    optimizedPaymentChains?: OptimizedPaymentChain[];
+    optimizedAmountCents?: number;
   };
   onClose: () => void;
   onSubmit: (event: DebtEvent) => void | Promise<void>;
@@ -161,15 +163,30 @@ export function EventModal({
     const id = initialEvent?.id ?? `event-${type}-${Date.now()}`;
     const createdAt = initialEvent?.createdAt ?? new Date().toISOString();
 
-    if (type === 'direct' || type === 'single' || type === 'payment') {
+    if (type === 'direct' || type === 'single' || type === 'payment' || type === 'optimized_payment') {
       const amountCents = parseEuroToCents(amount);
       if (!title.trim() || amountCents <= 0 || fromMemberId === toMemberId) {
         Alert.alert('Fast geschafft', 'Bitte Titel, zwei unterschiedliche Personen und einen Betrag eintragen.');
         return null;
       }
 
-      const payerAmountCents = type === 'payment' ? amountCents : -amountCents;
-      const receiverAmountCents = type === 'payment' ? -amountCents : amountCents;
+      const isPaymentType = type === 'payment' || type === 'optimized_payment';
+      const payerAmountCents = isPaymentType ? amountCents : -amountCents;
+      const receiverAmountCents = isPaymentType ? -amountCents : amountCents;
+      const baseOptimizedChains = preset?.optimizedPaymentChains ?? initialEvent?.optimizedPaymentChains ?? [];
+      const baseOptimizedAmountCents =
+        preset?.optimizedAmountCents ??
+        initialEvent?.optimizedPaymentChains?.reduce((total, chain) => total + chain.amountCents, 0) ??
+        0;
+      const optimizedPaymentChains =
+        type === 'optimized_payment'
+          ? buildOptimizedPaymentChains(amountCents, baseOptimizedAmountCents, baseOptimizedChains)
+          : [];
+
+      if (type === 'optimized_payment' && optimizedPaymentChains.length === 0) {
+        Alert.alert('Optimierte Zahlung nicht moeglich', 'Diese Zahlung braucht einen gueltigen Shortcut-Weg aus der Optimierung.');
+        return null;
+      }
 
       return {
         id,
@@ -178,14 +195,15 @@ export function EventModal({
         title: title.trim(),
         description:
           note.trim() ||
-          (type === 'payment'
-            ? `${getMemberName(fromMemberId)} hat ${getMemberName(toMemberId)} bezahlt`
+          (isPaymentType
+            ? buildPaymentDescription(getMemberName(fromMemberId), getMemberName(toMemberId), optimizedPaymentChains, getMemberName)
             : `${getMemberName(fromMemberId)} schuldet ${getMemberName(toMemberId)}`),
         createdAt,
         lines: [
           { memberId: fromMemberId, amountCents: payerAmountCents },
           { memberId: toMemberId, amountCents: receiverAmountCents },
         ],
+        optimizedPaymentChains,
       };
     }
 
@@ -305,7 +323,7 @@ export function EventModal({
               placeholder="z.B. Pokerabend"
             />
 
-            {(type === 'direct' || type === 'single' || type === 'payment') && (
+            {(type === 'direct' || type === 'single' || type === 'payment' || type === 'optimized_payment') && (
               <DirectEventFields
                 type={type}
                 members={members}
@@ -358,6 +376,50 @@ export function EventModal({
       </SafeAreaView>
     </Modal>
   );
+}
+
+function buildOptimizedPaymentChains(
+  amountCents: number,
+  originalAmountCents: number,
+  chains: OptimizedPaymentChain[],
+) {
+  if (chains.length === 0 || originalAmountCents <= 0 || amountCents > originalAmountCents) {
+    return [];
+  }
+
+  let remaining = amountCents;
+  const allocated: OptimizedPaymentChain[] = [];
+
+  for (const chain of chains) {
+    if (remaining <= 0) {
+      break;
+    }
+    const nextAmount = Math.min(chain.amountCents, remaining);
+    if (nextAmount <= 0) {
+      continue;
+    }
+    allocated.push({
+      ...chain,
+      amountCents: nextAmount,
+    });
+    remaining -= nextAmount;
+  }
+
+  return remaining === 0 ? allocated : [];
+}
+
+function buildPaymentDescription(
+  fromMemberName: string,
+  toMemberName: string,
+  chains: OptimizedPaymentChain[],
+  getMemberName: (memberId: string) => string,
+) {
+  const viaMemberNames = Array.from(new Set(chains.flatMap((chain) => chain.memberIds.slice(1, -1)).map(getMemberName)));
+  const base = `${fromMemberName} hat ${toMemberName} bezahlt`;
+  if (viaMemberNames.length === 0) {
+    return base;
+  }
+  return `${base} · Bezahlt durch ${viaMemberNames.join(', ')}`;
 }
 
 function createStyles(colors: DashboardColors) {

@@ -6,6 +6,7 @@ import de.interaapps.weowe.debt.domain.EventType
 import de.interaapps.weowe.debt.domain.GameEntry
 import de.interaapps.weowe.debt.domain.GameMode
 import de.interaapps.weowe.debt.domain.LedgerLine
+import de.interaapps.weowe.debt.domain.OptimizedPaymentChain
 import de.interaapps.weowe.debt.domain.SplitShare
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
@@ -36,6 +37,7 @@ data class UpsertDebtEventRequest(
     val splitParticipantIds: List<String> = emptyList(),
     val splitShares: List<SplitShare> = emptyList(),
     val gameEntries: List<GameEntry> = emptyList(),
+    val optimizedPaymentChains: List<OptimizedPaymentChain> = emptyList(),
 )
 
 fun EventPage.toResponse(): EventPageResponse =

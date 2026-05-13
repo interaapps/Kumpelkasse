@@ -47,8 +47,8 @@ class DebtCalculationServiceTest {
         assertEquals(0, result.summary.owedByMeCents)
         assertEquals(500, result.summary.owedToMeCents)
         assertEquals(500, result.summary.netCents)
-        assertEquals("alex", result.owedToMe.single().member.id)
-        assertEquals(500, result.owedToMe.single().amountCents)
+        assertEquals("alex", result.directOwedToMe.single().member.id)
+        assertEquals(500, result.directOwedToMe.single().amountCents)
     }
 
     @Test
@@ -75,7 +75,7 @@ class DebtCalculationServiceTest {
         )
 
         assertEquals(1_000, result.summary.owedByMeCents)
-        assertEquals("alex", result.owedByMe.single().member.id)
+        assertEquals("alex", result.directOwedByMe.single().member.id)
     }
 
     @Test
@@ -123,6 +123,7 @@ class DebtCalculationServiceTest {
         assertEquals(-2_500, result.optimizedTransfers.single().fromBalanceCents)
         assertEquals(2_500, result.optimizedTransfers.single().toBalanceCents)
         assertEquals(2, result.optimizedTransfers.single().explanationLines.size)
+        assertEquals(listOf("konrad", "julian", "matti"), result.optimizedTransfers.single().routeChains.single().memberIds)
     }
 
     @Test
@@ -216,9 +217,9 @@ class DebtCalculationServiceTest {
         assertEquals(1_000, result.summary.owedByMeCents)
         assertEquals(0, result.summary.owedToMeCents)
         assertEquals(-1_000, result.summary.netCents)
-        assertEquals(1, result.owedByMe.single().eventCount)
-        assertEquals("alex", result.owedByMe.single().member.id)
-        assertEquals(1_000, result.owedByMe.single().amountCents)
+        assertEquals(1, result.directOwedByMe.single().eventCount)
+        assertEquals("alex", result.directOwedByMe.single().member.id)
+        assertEquals(1_000, result.directOwedByMe.single().amountCents)
     }
 
     @Test
