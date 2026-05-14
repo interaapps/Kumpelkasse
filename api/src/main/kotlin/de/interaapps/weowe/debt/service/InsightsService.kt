@@ -127,11 +127,24 @@ class InsightsService(
         val mostActiveEntry = eventCounts.maxByOrNull { it.value }
         val biggestGameWinnerEntry = gameBalances.maxByOrNull { it.value }
         val biggestGameLoserEntry = gameBalances.minByOrNull { it.value }
+        val memberBalances = members
+            .map { member ->
+                MemberStat(
+                    member = member,
+                    amountCents = balances[member.id] ?: 0L,
+                    eventCount = eventCounts[member.id] ?: 0,
+                )
+            }
+            .sortedWith(
+                compareByDescending<MemberStat> { abs(it.amountCents) }
+                    .thenBy { it.member.name.lowercase() },
+            )
 
         return GroupStats(
             totalEvents = events.size,
             totalVolumeCents = totalVolume,
             activeMembers = eventCounts.keys.size,
+            memberBalances = memberBalances,
             biggestCreditor = biggestCreditorEntry?.takeIf { it.value > 0 }?.let { statFor(it.key, it.value, eventCounts) },
             biggestDebtor = biggestDebtorEntry?.takeIf { it.value < 0 }?.let { statFor(it.key, abs(it.value), eventCounts) },
             mostActiveMember = mostActiveEntry?.let { statFor(it.key, it.value.toLong(), eventCounts) },

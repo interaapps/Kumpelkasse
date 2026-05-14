@@ -119,6 +119,7 @@ export const EMPTY_GROUP_STATS: GroupStats = {
   totalEvents: 0,
   totalVolumeCents: 0,
   activeMembers: 0,
+  memberBalances: [],
   biggestCreditor: null,
   biggestDebtor: null,
   mostActiveMember: null,
@@ -153,6 +154,7 @@ export type GroupStats = {
   totalEvents: number;
   totalVolumeCents: number;
   activeMembers: number;
+  memberBalances: MemberStat[];
   biggestCreditor?: MemberStat | null;
   biggestDebtor?: MemberStat | null;
   mostActiveMember?: MemberStat | null;
@@ -184,7 +186,11 @@ export type GameHistory = {
 export function normalizeDashboardResponse(dashboard: DashboardResponse): DashboardResponse {
   return {
     ...dashboard,
-    stats: dashboard.stats ?? EMPTY_GROUP_STATS,
+    stats: {
+      ...EMPTY_GROUP_STATS,
+      ...(dashboard.stats ?? {}),
+      memberBalances: dashboard.stats?.memberBalances ?? [],
+    },
     directOwedByMe: dashboard.directOwedByMe ?? dashboard.owedByMe ?? [],
     directOwedToMe: dashboard.directOwedToMe ?? dashboard.owedToMe ?? [],
     optimizedOwedByMe: dashboard.optimizedOwedByMe ?? dashboard.owedByMe ?? [],

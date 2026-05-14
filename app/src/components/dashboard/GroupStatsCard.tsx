@@ -2,31 +2,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/dashboard/Avatar';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { DebtEvent, EMPTY_GROUP_STATS, GroupStats, Member, MemberStat } from '@/types/debt';
-import { formatEuro, getMemberBalance } from '@/utils/debt';
+import { EMPTY_GROUP_STATS, GroupStats, MemberStat } from '@/types/debt';
+import { formatEuro } from '@/utils/debt';
 
 type GroupStatsCardProps = {
   stats?: GroupStats | null;
-  members: Member[];
-  events: DebtEvent[];
   onOpenGameHistory: () => void;
 };
 
-export function GroupStatsCard({ stats, members, events, onOpenGameHistory }: GroupStatsCardProps) {
+export function GroupStatsCard({ stats, onOpenGameHistory }: GroupStatsCardProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
   const safeStats = stats ?? EMPTY_GROUP_STATS;
-  const memberBalances = members
-    .map((member) => ({
-      member,
-      balanceCents: getMemberBalance(events, member.id),
-    }))
-    .sort((left, right) => {
-      if (Math.abs(right.balanceCents) !== Math.abs(left.balanceCents)) {
-        return Math.abs(right.balanceCents) - Math.abs(left.balanceCents);
-      }
-      return left.member.name.localeCompare(right.member.name, 'de');
-    });
 
   return (
     <View style={styles.card}>
@@ -60,27 +47,31 @@ export function GroupStatsCard({ stats, members, events, onOpenGameHistory }: Gr
       <View style={styles.memberListCard}>
         <Text style={styles.memberListTitle}>Alle Mitglieder</Text>
         <View style={styles.memberList}>
-          {memberBalances.map(({ member, balanceCents }) => (
+          {safeStats.memberBalances.map(({ member, amountCents, eventCount }) => (
             <View key={member.id} style={styles.memberBalanceRow}>
               <Avatar
                 initials={member.initials}
                 avatarUrl={member.avatarUrl}
                 size={42}
-                backgroundColor={balanceCents >= 0 ? `${colors.positive}22` : `${colors.negative}22`}
-                color={balanceCents >= 0 ? colors.positive : colors.negative}
+                backgroundColor={amountCents >= 0 ? `${colors.positive}22` : `${colors.negative}22`}
+                color={amountCents >= 0 ? colors.positive : colors.negative}
               />
               <View style={styles.memberBalanceText}>
                 <Text style={styles.memberBalanceName}>{member.name}</Text>
                 <Text style={styles.memberBalanceHint}>
-                  {balanceCents > 0 ? 'bekommt Geld' : balanceCents < 0 ? 'schuldet Geld' : 'ausgeglichen'}
+                  {amountCents > 0
+                    ? `bekommt Geld${eventCount > 0 ? ` · ${eventCount} Events` : ''}`
+                    : amountCents < 0
+                      ? `schuldet Geld${eventCount > 0 ? ` · ${eventCount} Events` : ''}`
+                      : 'ausgeglichen'}
                 </Text>
               </View>
               <Text
                 style={[
                   styles.memberBalanceValue,
-                  balanceCents > 0 ? styles.positive : balanceCents < 0 ? styles.negative : styles.neutral,
+                  amountCents > 0 ? styles.positive : amountCents < 0 ? styles.negative : styles.neutral,
                 ]}>
-                {formatEuro(Math.abs(balanceCents), { signed: balanceCents > 0 })}
+                {formatEuro(Math.abs(amountCents), { signed: amountCents > 0 })}
               </Text>
             </View>
           ))}

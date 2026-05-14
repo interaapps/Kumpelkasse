@@ -66,8 +66,6 @@ export function StatsScreen() {
               <View style={styles.body}>
                 <GroupStatsCard
                   stats={dashboard.stats}
-                  members={dashboard.members}
-                  events={dashboard.events}
                   onOpenGameHistory={() => setGameHistoryVisible(true)}
                 />
               </View>

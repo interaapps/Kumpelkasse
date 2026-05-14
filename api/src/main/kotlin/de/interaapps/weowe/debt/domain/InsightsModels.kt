@@ -10,6 +10,7 @@ data class GroupStats(
     val totalEvents: Int,
     val totalVolumeCents: Long,
     val activeMembers: Int,
+    val memberBalances: List<MemberStat> = emptyList(),
     val biggestCreditor: MemberStat? = null,
     val biggestDebtor: MemberStat? = null,
     val mostActiveMember: MemberStat? = null,
