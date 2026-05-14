@@ -203,6 +203,7 @@ export function EventsScreen() {
 
           <EventDetailsModal
             event={state.selectedEvent}
+            events={feed.events}
             members={dashboard.members}
             visible={isFocused && Boolean(state.selectedEvent)}
             onClose={() => actions.setSelectedEvent(null)}

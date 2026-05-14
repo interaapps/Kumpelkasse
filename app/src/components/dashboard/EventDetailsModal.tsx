@@ -9,6 +9,7 @@ import { formatEuro, getEventAccent } from '@/utils/debt';
 
 type EventDetailsModalProps = {
   event: DebtEvent | null;
+  events?: DebtEvent[];
   members: Member[];
   visible: boolean;
   onClose: () => void;
@@ -19,6 +20,7 @@ type EventDetailsModalProps = {
 
 export function EventDetailsModal({
   event,
+  events = [],
   members,
   visible,
   onClose,
@@ -34,6 +36,12 @@ export function EventDetailsModal({
 
   const currentEvent = event;
   const accent = getEventAccent(event.type);
+  const relatedPayments = events.filter(
+    (candidate) =>
+      candidate.id !== event.id &&
+      (candidate.type === 'payment' || candidate.type === 'optimized_payment') &&
+      (candidate.optimizedPaymentChains ?? []).some((chain) => chain.eventIds.includes(event.id)),
+  );
 
   function handleDelete() {
     Alert.alert('Event löschen?', 'Dieses Event wird dauerhaft entfernt.', [
@@ -100,7 +108,19 @@ export function EventDetailsModal({
             })}
           </View>
 
-          {event.type === 'optimized_payment' && event.optimizedPaymentChains?.length ? (
+          {(event.type === 'payment' || event.type === 'optimized_payment') && event.optimizedPaymentChains?.length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Beglichene Schulden</Text>
+              {summarizePaymentChains(event.optimizedPaymentChains).map((item) => (
+                <View key={`${item.eventId}-${item.amountCents}`} style={styles.chainRow}>
+                  <Text style={styles.chainAmount}>{formatEuro(item.amountCents)}</Text>
+                  <Text style={styles.chainText}>{item.title}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {(event.type === 'payment' || event.type === 'optimized_payment') && event.optimizedPaymentChains?.length ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Shortcut-Weg</Text>
               {event.optimizedPaymentChains.map((chain, index) => (
@@ -109,6 +129,26 @@ export function EventDetailsModal({
                   <Text style={styles.chainText}>{formatOptimizedChain(chain, members)}</Text>
                 </View>
               ))}
+            </View>
+          ) : null}
+
+          {relatedPayments.length ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Bezahlt mit</Text>
+              {relatedPayments.map((payment) => {
+                const amountCents = Math.max(
+                  0,
+                  ...(payment.optimizedPaymentChains ?? [])
+                    .filter((chain) => chain.eventIds.includes(event.id))
+                    .map((chain) => chain.amountCents),
+                );
+                return (
+                  <View key={payment.id} style={styles.chainRow}>
+                    <Text style={styles.chainAmount}>{formatEuro(amountCents || getPaymentAmount(payment))}</Text>
+                    <Text style={styles.chainText}>{payment.title} · {formatDate(payment.createdAt)}</Text>
+                  </View>
+                );
+              })}
             </View>
           ) : null}
 
@@ -173,6 +213,32 @@ function formatDate(value: string) {
     month: 'long',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function getPaymentAmount(event: DebtEvent) {
+  return event.lines.reduce((highest, line) => Math.max(highest, Math.max(0, line.amountCents)), 0);
+}
+
+function summarizePaymentChains(chains: OptimizedPaymentChain[]) {
+  const grouped = new Map<string, { eventId: string; title: string; amountCents: number }>();
+
+  chains.forEach((chain) => {
+    chain.eventIds.forEach((eventId, index) => {
+      const title = chain.eventTitles[index] ?? 'Unbekanntes Event';
+      const existing = grouped.get(eventId);
+      if (existing) {
+        existing.amountCents += chain.amountCents;
+        return;
+      }
+      grouped.set(eventId, {
+        eventId,
+        title,
+        amountCents: chain.amountCents,
+      });
+    });
+  });
+
+  return Array.from(grouped.values());
 }
 
 function createStyles(colors: DashboardColors) {

@@ -222,6 +222,8 @@ class DebtCalculationServiceTest {
         assertEquals(1, result.directOwedByMe.single().eventCount)
         assertEquals("alex", result.directOwedByMe.single().member.id)
         assertEquals(1_000, result.directOwedByMe.single().amountCents)
+        assertEquals(listOf("dinner"), result.directOwedByMe.single().eventIds)
+        assertEquals(listOf("Abendessen"), result.directOwedByMe.single().eventTitles)
     }
 
     @Test

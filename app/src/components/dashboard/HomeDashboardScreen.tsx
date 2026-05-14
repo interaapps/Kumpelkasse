@@ -95,7 +95,15 @@ export function HomeDashboardScreen() {
                     actions.setProfileVisible(true);
                   }}
                   onCreateDirectPayment={(memberId, amountCents) =>
-                    actions.openPaymentModal(state.currentUserId!, state.dashboard!.members, memberId, amountCents)
+                    actions.openPaymentModal(
+                      state.currentUserId!,
+                      state.dashboard!.members,
+                      memberId,
+                      amountCents,
+                      undefined,
+                      state.dashboard!.directOwedByMe.find((row) => row.member.id === memberId && row.amountCents === amountCents)?.eventIds ?? [],
+                      state.dashboard!.directOwedByMe.find((row) => row.member.id === memberId && row.amountCents === amountCents)?.eventTitles ?? [],
+                    )
                   }
                   onCreateOptimizedPayment={(transfer) =>
                     actions.openPaymentModal(
@@ -139,6 +147,7 @@ export function HomeDashboardScreen() {
 
           <EventDetailsModal
             event={state.selectedEvent}
+            events={state.dashboard.events}
             members={state.dashboard.members}
             visible={isFocused && Boolean(state.selectedEvent)}
             onClose={() => actions.setSelectedEvent(null)}

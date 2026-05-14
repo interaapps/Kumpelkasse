@@ -281,6 +281,8 @@ class DebtCalculationService {
                         member = member,
                         amountCents = transfer.amountCents,
                         eventCount = transfer.eventIds.size,
+                        eventIds = transfer.eventIds.toList(),
+                        eventTitles = transfer.eventTitles.toList(),
                     )
                 }
             }
@@ -290,6 +292,8 @@ class DebtCalculationService {
                         member = member,
                         amountCents = transfer.amountCents,
                         eventCount = transfer.eventIds.size,
+                        eventIds = transfer.eventIds.toList(),
+                        eventTitles = transfer.eventTitles.toList(),
                     )
                 }
             }
@@ -483,6 +487,7 @@ private interface PartyTransfer {
     val toMemberId: String
     val amountCents: Long
     val eventIds: Set<String>
+    val eventTitles: Set<String>
 }
 
 private data class DirectTransfer(
@@ -490,7 +495,7 @@ private data class DirectTransfer(
     override val toMemberId: String,
     override val amountCents: Long,
     override val eventIds: Set<String>,
-    val eventTitles: Set<String>,
+    override val eventTitles: Set<String>,
 ) : PartyTransfer
 
 private data class UserSettlementRows(
@@ -515,4 +520,6 @@ private fun SettlementTransfer.toPartyTransfer(): PartyTransfer =
         override val toMemberId: String = to.id
         override val amountCents: Long = this@toPartyTransfer.amountCents
         override val eventIds: Set<String> = this@toPartyTransfer.eventIds
+        override val eventTitles: Set<String> =
+            this@toPartyTransfer.explanationLines.mapTo(linkedSetOf()) { it.eventTitle }
     }

@@ -353,15 +353,29 @@ export function useDashboardController() {
     toMemberId?: string,
     amountCents?: number,
     optimizedTransfer?: SettlementTransfer,
+    relatedEventIds: string[] = [],
+    relatedEventTitles: string[] = [],
   ) {
-    const hasIntermediaryShortcut = optimizedTransfer?.routeChains.some((chain) => chain.memberIds.length > 2) ?? false;
+    const directPaymentChains =
+      !optimizedTransfer && toMemberId && amountCents && relatedEventIds.length > 0
+        ? [
+            {
+              memberIds: [activeUserId, toMemberId],
+              amountCents,
+              eventIds: relatedEventIds,
+              eventTitles: relatedEventTitles,
+            },
+          ]
+        : [];
+    const paymentChains = optimizedTransfer?.routeChains ?? directPaymentChains;
+    const hasIntermediaryShortcut = paymentChains.some((chain) => chain.memberIds.length > 2);
 
     setEditingEvent(null);
     setEventPreset({
       amountCents,
       fromMemberId: activeUserId,
       toMemberId: toMemberId ?? members.find((member) => member.id !== activeUserId)?.id,
-      optimizedPaymentChains: optimizedTransfer?.routeChains ?? [],
+      optimizedPaymentChains: paymentChains,
       optimizedAmountCents: optimizedTransfer?.amountCents,
     });
     setActiveModal(optimizedTransfer && hasIntermediaryShortcut ? 'optimized_payment' : 'payment');

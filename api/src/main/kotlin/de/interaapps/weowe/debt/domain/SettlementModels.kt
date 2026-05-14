@@ -4,6 +4,8 @@ data class SettlementRow(
     val member: Member,
     val amountCents: Long,
     val eventCount: Int,
+    val eventIds: List<String> = emptyList(),
+    val eventTitles: List<String> = emptyList(),
 )
 
 data class SettlementTransfer(

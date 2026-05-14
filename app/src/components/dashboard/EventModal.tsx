@@ -70,10 +70,12 @@ export function EventModal({
   const [gameSettled, setGameSettled] = useState(false);
   const [bankMemberId, setBankMemberId] = useState<string | null>(null);
   const [quickGameEntryVisible, setQuickGameEntryVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setQuickGameEntryVisible(false);
+      setIsSubmitting(false);
       return;
     }
 
@@ -194,16 +196,23 @@ export function EventModal({
   }
 
   async function handleSubmit() {
+    if (isSubmitting) {
+      return;
+    }
+
     const event = buildEvent();
     if (!event) {
       return;
     }
 
     try {
+      setIsSubmitting(true);
       await onSubmit(event);
       onClose();
     } catch {
       Alert.alert('Speichern fehlgeschlagen', 'Die API konnte das Event nicht speichern. Bitte versuche es erneut.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -229,7 +238,9 @@ export function EventModal({
       const optimizedPaymentChains =
         type === 'optimized_payment'
           ? buildOptimizedPaymentChains(amountCents, baseOptimizedAmountCents, baseOptimizedChains)
-          : [];
+          : isPaymentType
+            ? baseOptimizedChains
+            : [];
 
       if (type === 'optimized_payment' && optimizedPaymentChains.length === 0) {
         Alert.alert('Optimierte Zahlung nicht moeglich', 'Diese Zahlung braucht einen gueltigen Shortcut-Weg aus der Optimierung.');
@@ -251,7 +262,7 @@ export function EventModal({
           { memberId: fromMemberId, amountCents: payerAmountCents },
           { memberId: toMemberId, amountCents: receiverAmountCents },
         ],
-        optimizedPaymentChains,
+        optimizedPaymentChains: isPaymentType ? optimizedPaymentChains : [],
       };
     }
 
@@ -370,6 +381,7 @@ export function EventModal({
           <EventModalHeader
             title={getModalTitle(type, Boolean(initialEvent))}
             canSave={canSave}
+            isSaving={isSubmitting}
             onClose={onClose}
             onSave={handleSubmit}
           />

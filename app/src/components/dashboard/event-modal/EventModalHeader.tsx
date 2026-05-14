@@ -7,13 +7,15 @@ type EventModalHeaderProps = {
   eyebrow?: string;
   title: string;
   canSave: boolean;
+  isSaving?: boolean;
   onClose: () => void;
   onSave: () => void;
 };
 
-export function EventModalHeader({ eyebrow, title, canSave, onClose, onSave }: EventModalHeaderProps) {
+export function EventModalHeader({ eyebrow, title, canSave, isSaving = false, onClose, onSave }: EventModalHeaderProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
+  const saveDisabled = !canSave || isSaving;
 
   return (
     <View style={styles.header}>
@@ -25,10 +27,10 @@ export function EventModalHeader({ eyebrow, title, canSave, onClose, onSave }: E
         <Text style={styles.title}>{title}</Text>
       </View>
       <Pressable
-        disabled={!canSave}
-        style={({ pressed }) => [styles.saveButton, !canSave && styles.saveButtonDisabled, pressed && styles.pressed]}
+        disabled={saveDisabled}
+        style={({ pressed }) => [styles.saveButton, saveDisabled && styles.saveButtonDisabled, pressed && styles.pressed]}
         onPress={onSave}>
-        <Text style={styles.saveText}>Speichern</Text>
+        <Text style={styles.saveText}>{isSaving ? 'Speichert...' : 'Speichern'}</Text>
       </Pressable>
     </View>
   );

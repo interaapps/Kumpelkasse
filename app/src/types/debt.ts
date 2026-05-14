@@ -71,6 +71,8 @@ export type SettlementRow = {
   member: Member;
   amountCents: number;
   eventCount: number;
+  eventIds: string[];
+  eventTitles: string[];
 };
 
 export type SettlementTransfer = {
@@ -191,13 +193,21 @@ export function normalizeDashboardResponse(dashboard: DashboardResponse): Dashbo
       ...(dashboard.stats ?? {}),
       memberBalances: dashboard.stats?.memberBalances ?? [],
     },
-    directOwedByMe: dashboard.directOwedByMe ?? dashboard.owedByMe ?? [],
-    directOwedToMe: dashboard.directOwedToMe ?? dashboard.owedToMe ?? [],
-    optimizedOwedByMe: dashboard.optimizedOwedByMe ?? dashboard.owedByMe ?? [],
-    optimizedOwedToMe: dashboard.optimizedOwedToMe ?? dashboard.owedToMe ?? [],
+    directOwedByMe: (dashboard.directOwedByMe ?? dashboard.owedByMe ?? []).map(normalizeSettlementRow),
+    directOwedToMe: (dashboard.directOwedToMe ?? dashboard.owedToMe ?? []).map(normalizeSettlementRow),
+    optimizedOwedByMe: (dashboard.optimizedOwedByMe ?? dashboard.owedByMe ?? []).map(normalizeSettlementRow),
+    optimizedOwedToMe: (dashboard.optimizedOwedToMe ?? dashboard.owedToMe ?? []).map(normalizeSettlementRow),
     optimizedTransfers: (dashboard.optimizedTransfers ?? []).map((transfer) => ({
       ...transfer,
       routeChains: transfer.routeChains ?? [],
     })),
+  };
+}
+
+function normalizeSettlementRow(row: SettlementRow): SettlementRow {
+  return {
+    ...row,
+    eventIds: row.eventIds ?? [],
+    eventTitles: row.eventTitles ?? [],
   };
 }
