@@ -128,11 +128,13 @@ type GameEventFieldsProps = {
   gameValues: Record<string, GamePlayerValue>;
   gameDeltaCents: number;
   gameMode: GameMode;
+  gameSettled: boolean;
   bankMemberId: string | null;
   bankBalanceCents: number;
   setSelectedParticipantIds: React.Dispatch<React.SetStateAction<string[]>>;
   setGameValues: React.Dispatch<React.SetStateAction<Record<string, GamePlayerValue>>>;
   setGameMode: (mode: GameMode) => void;
+  setGameSettled: (settled: boolean) => void;
   setBankMemberId: (memberId: string) => void;
 };
 
@@ -143,11 +145,13 @@ export function GameEventFields({
   gameValues,
   gameDeltaCents,
   gameMode,
+  gameSettled,
   bankMemberId,
   bankBalanceCents,
   setSelectedParticipantIds,
   setGameValues,
   setGameMode,
+  setGameSettled,
   setBankMemberId,
 }: GameEventFieldsProps) {
   return (
@@ -156,6 +160,12 @@ export function GameEventFields({
         <SegmentedControl>
           <SegmentButton label="Poker" selected={gameMode === 'poker'} onPress={() => setGameMode('poker')} />
           <SegmentButton label="Mit Bank" selected={gameMode === 'bank'} onPress={() => setGameMode('bank')} />
+        </SegmentedControl>
+      </FormField>
+      <FormField label="Status">
+        <SegmentedControl>
+          <SegmentButton label="Laufend" selected={!gameSettled} onPress={() => setGameSettled(false)} />
+          <SegmentButton label="Abgeschlossen" selected={gameSettled} onPress={() => setGameSettled(true)} />
         </SegmentedControl>
       </FormField>
       <MemberMultiSelect
@@ -188,6 +198,7 @@ export function GameEventFields({
         members={gameMembers}
         values={gameValues}
         deltaCents={gameDeltaCents}
+        settled={gameSettled}
         bankMemberId={gameMode === 'bank' ? bankMemberId : null}
         autoBalancedCents={gameMode === 'bank' ? bankBalanceCents : undefined}
         onChange={(memberId, value) =>

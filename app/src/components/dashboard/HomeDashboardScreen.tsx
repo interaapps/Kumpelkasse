@@ -84,6 +84,7 @@ export function HomeDashboardScreen() {
 
                 <DebtOverviewCard
                   currentUserId={state.currentUserId}
+                  members={state.dashboard.members}
                   directOwedByMe={state.dashboard.directOwedByMe}
                   directOwedToMe={state.dashboard.directOwedToMe}
                   optimizedOwedByMe={state.dashboard.optimizedOwedByMe}

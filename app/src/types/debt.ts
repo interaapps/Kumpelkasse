@@ -39,6 +39,7 @@ export type DebtEvent = {
   splitParticipantIds?: string[];
   splitShares?: SplitShare[];
   gameEntries?: GameEntry[];
+  gameSettled?: boolean;
   optimizedPaymentChains?: OptimizedPaymentChain[];
 };
 

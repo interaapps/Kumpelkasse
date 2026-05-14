@@ -55,7 +55,12 @@ export function EventsScreen() {
   const currentUserId = state.currentUserId;
   const selectedGroup = dashboard?.groups.find((group) => group.id === dashboard.selectedGroupId) ?? dashboard?.groups[0];
   const currentUser = dashboard?.members.find((member) => member.id === currentUserId) ?? dashboard?.members[0];
-  const feed = useEventFeed(selectedGroup?.id ?? '', Boolean(selectedGroup), { query, type, range, mineOnly });
+  const feed = useEventFeed(
+    selectedGroup?.id ?? '',
+    Boolean(selectedGroup),
+    { query, type, range, mineOnly },
+    state.dashboardRevision,
+  );
 
   const summaryText = useMemo(() => {
     if (feed.totalCount === 0) {

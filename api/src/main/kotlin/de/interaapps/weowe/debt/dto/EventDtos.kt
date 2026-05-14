@@ -9,7 +9,6 @@ import de.interaapps.weowe.debt.domain.LedgerLine
 import de.interaapps.weowe.debt.domain.OptimizedPaymentChain
 import de.interaapps.weowe.debt.domain.SplitShare
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotEmpty
 import java.time.Instant
 
 data class EventPageResponse(
@@ -29,7 +28,6 @@ data class UpsertDebtEventRequest(
     val title: String,
     val description: String? = null,
     val createdAt: Instant? = null,
-    @field:NotEmpty
     val lines: List<LedgerLine>,
     val gameMode: GameMode? = null,
     val bankMemberId: String? = null,
@@ -37,6 +35,7 @@ data class UpsertDebtEventRequest(
     val splitParticipantIds: List<String> = emptyList(),
     val splitShares: List<SplitShare> = emptyList(),
     val gameEntries: List<GameEntry> = emptyList(),
+    val gameSettled: Boolean = true,
     val optimizedPaymentChains: List<OptimizedPaymentChain> = emptyList(),
 )
 

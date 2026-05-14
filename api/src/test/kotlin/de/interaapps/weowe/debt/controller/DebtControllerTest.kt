@@ -88,6 +88,33 @@ class DebtControllerTest {
     }
 
     @Test
+    fun `ongoing game can be created without ledger lines`() {
+        val body = """
+            {
+              "groupId": "friends",
+              "type": "GAME",
+              "title": "Pokerabend läuft",
+              "lines": [],
+              "gameSettled": false,
+              "gameEntries": [
+                { "memberId": "julian", "buyInCents": 1000, "cashOutCents": 0 },
+                { "memberId": "alex", "buyInCents": 500, "cashOutCents": 0 }
+              ]
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/api/events")
+                .header("Authorization", "Bearer test-session")
+                .contentType("application/json")
+                .content(body),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.type").value("game"))
+            .andExpect(jsonPath("$.lines", hasSize<Any>(0)))
+    }
+
+    @Test
     fun `event details require group membership`() {
         val store = FakeDebtStore()
         val outsider = Member(id = "outsider", name = "Outsider", initials = "O", email = "outsider@example.com")
@@ -203,8 +230,12 @@ private class FakeDebtStore : DebtStore {
     }
 
     override fun createEvent(request: UpsertDebtEventRequest): DebtEvent {
-        if (request.lines.sumOf { it.amountCents } != 0L) {
+        val total = request.lines.sumOf { it.amountCents }
+        if (request.type != EventType.GAME && total != 0L) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Ledger lines must sum to 0")
+        }
+        if (request.type == EventType.GAME && request.gameSettled && total != 0L) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Completed game ledger lines must sum to 0")
         }
         val event = DebtEvent(
             id = request.id ?: "created",
@@ -214,6 +245,10 @@ private class FakeDebtStore : DebtStore {
             description = request.description,
             createdAt = request.createdAt ?: Instant.now(),
             lines = request.lines,
+            gameMode = request.gameMode,
+            gameSettled = request.gameSettled,
+            bankMemberId = request.bankMemberId,
+            gameEntries = request.gameEntries,
         )
         events[event.id] = event
         return event

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 
 import { FormTextInput } from '@/components/dashboard/event-modal/EventModalForm';
 import { EventModalHeader } from '@/components/dashboard/event-modal/EventModalHeader';
 import { type GamePlayerValue } from '@/components/dashboard/event-modal/GamePlayersEditor';
+import { GameQuickEntryModal } from '@/components/dashboard/event-modal/GameQuickEntryModal';
 import { DirectEventFields, GameEventFields, SplitEventFields } from '@/components/dashboard/event-modal/EventModalSections';
 import {
   centsToInput,
@@ -65,10 +67,13 @@ export function EventModal({
   const [manualShares, setManualShares] = useState<Record<string, string>>({});
   const [gameValues, setGameValues] = useState<Record<string, GamePlayerValue>>({});
   const [gameMode, setGameMode] = useState<GameMode>('poker');
+  const [gameSettled, setGameSettled] = useState(false);
   const [bankMemberId, setBankMemberId] = useState<string | null>(null);
+  const [quickGameEntryVisible, setQuickGameEntryVisible] = useState(false);
 
   useEffect(() => {
     if (!visible) {
+      setQuickGameEntryVisible(false);
       return;
     }
 
@@ -88,6 +93,7 @@ export function EventModal({
     setManualShares({});
     setGameValues(createEmptyGameValues(defaultParticipantIds));
     setGameMode(initialEvent?.gameMode ?? 'poker');
+    setGameSettled(initialEvent?.gameSettled ?? false);
     setBankMemberId(initialEvent?.bankMemberId ?? defaultParticipantIds[0] ?? null);
 
     if (!initialEvent) {
@@ -102,13 +108,16 @@ export function EventModal({
       setBankMemberId,
       setGameValues,
       setGameMode,
+      setGameSettled,
       setManualShares,
       setPayerId,
       setSelectedParticipantIds,
       setSplitMode,
       setToMemberId,
     });
-  }, [currentUserId, initialEvent, members, preset, type, visible]);
+    // Intentionally initialize only when the modal is opened.
+    // Background dashboard refreshes may replace `members` / event objects and should not reset in-progress input.
+  }, [visible]);
 
   useEffect(() => {
     if (!visible || type !== 'game' || gameMode !== 'bank' || !bankMemberId) {
@@ -127,6 +136,7 @@ export function EventModal({
   }, [bankMemberId, currentUserId, gameMode, selectedParticipantIds, type, visible]);
 
   const gameMembers = members.filter((member) => selectedParticipantIds.includes(member.id));
+  const quickGameEntryMembers = gameMembers.filter((member) => gameMode !== 'bank' || member.id !== bankMemberId);
   const nonBankGameMembers = gameMembers.filter((member) => gameMode !== 'bank' || member.id !== bankMemberId);
   const enteredGameLines = nonBankGameMembers
     .map((member) => ({
@@ -138,12 +148,50 @@ export function EventModal({
     .filter((line) => line.amountCents !== 0);
   const enteredGameDeltaCents = enteredGameLines.reduce((total, line) => total + line.amountCents, 0);
   const bankBalanceCents = -enteredGameDeltaCents;
-  const gameLines = normalizeLines([
+  const settledGameLines = normalizeLines([
     ...enteredGameLines,
     ...(gameMode === 'bank' && bankMemberId ? [{ memberId: bankMemberId, amountCents: bankBalanceCents }] : []),
   ]);
   const gameDeltaCents = gameMode === 'bank' ? 0 : enteredGameDeltaCents;
-  const canSave = type !== 'game' || (gameLines.length > 0 && (gameMode === 'bank' || gameDeltaCents === 0));
+  const gameHasEntries = gameMembers.some((member) => {
+    const value = gameValues[member.id];
+    return parseEuroToCents(value?.buyIn ?? '') > 0 || parseEuroToCents(value?.cashOut ?? '') > 0;
+  });
+  const canSave =
+    type !== 'game' ||
+    (gameSettled
+      ? settledGameLines.length > 0 && (gameMode === 'bank' || gameDeltaCents === 0)
+      : gameMembers.length > 0);
+
+  function applyQuickGameEntry({
+    memberId,
+    kind,
+    amountCents,
+  }: {
+    memberId: string;
+    kind: 'buyIn' | 'cashOut';
+    amountCents: number;
+  }) {
+    setGameValues((current) => {
+      const existingValue = current[memberId] ?? { buyIn: '', cashOut: '' };
+      const nextBuyInCents =
+        kind === 'buyIn'
+          ? parseEuroToCents(existingValue.buyIn) + amountCents
+          : parseEuroToCents(existingValue.buyIn);
+      const nextCashOutCents =
+        kind === 'cashOut'
+          ? parseEuroToCents(existingValue.cashOut) + amountCents
+          : parseEuroToCents(existingValue.cashOut);
+
+      return {
+        ...current,
+        [memberId]: {
+          buyIn: centsToEditorInput(nextBuyInCents),
+          cashOut: centsToEditorInput(nextCashOutCents),
+        },
+      };
+    });
+  }
 
   async function handleSubmit() {
     const event = buildEvent();
@@ -257,8 +305,8 @@ export function EventModal({
     }
 
     if (type === 'game') {
-      if (!title.trim() || gameLines.length === 0) {
-        Alert.alert('Fast geschafft', 'Bitte Titel und mindestens einen Spieler mit Werten eintragen.');
+      if (!title.trim() || gameMembers.length === 0) {
+        Alert.alert('Fast geschafft', 'Bitte Titel und mindestens einen Spieler eintragen.');
         return null;
       }
 
@@ -267,22 +315,36 @@ export function EventModal({
         return null;
       }
 
-      if (gameMode !== 'bank' && gameDeltaCents !== 0) {
+      if (gameSettled && gameMode !== 'bank' && gameDeltaCents !== 0) {
         Alert.alert('Noch nicht ausgeglichen', 'Einzahlungen und Auszahlungen müssen in Summe 0 ergeben.');
         return null;
       }
+
+      if (!gameSettled && !gameHasEntries) {
+        Alert.alert('Fast geschafft', 'Bitte erfasse mindestens ein Buy-in, Nachzahlen oder einen Cash-out.');
+        return null;
+      }
+
+      const description = gameSettled
+        ? settledGameLines
+            .map((line) => `${getMemberName(line.memberId)} ${formatEuro(line.amountCents, { signed: true })}`)
+            .join(', ') + (gameMode === 'bank' && bankMemberId ? ` · Bank: ${getMemberName(bankMemberId)}` : '')
+        : `Laufende Session · ${gameMembers.length} Spieler · Buy-ins ${formatEuro(
+            gameMembers.reduce((total, member) => total + parseEuroToCents(gameValues[member.id]?.buyIn ?? ''), 0),
+          )} · Cash-outs ${formatEuro(
+            gameMembers.reduce((total, member) => total + parseEuroToCents(gameValues[member.id]?.cashOut ?? ''), 0),
+          )}`;
 
       return {
         id,
         groupId,
         type: 'game',
         title: title.trim(),
-        description: gameLines
-          .map((line) => `${getMemberName(line.memberId)} ${formatEuro(line.amountCents, { signed: true })}`)
-          .join(', ') + (gameMode === 'bank' && bankMemberId ? ` · Bank: ${getMemberName(bankMemberId)}` : ''),
+        description,
         createdAt,
-        lines: gameLines,
+        lines: gameSettled ? settledGameLines : [],
         gameMode,
+        gameSettled,
         bankMemberId,
         gameEntries: gameMembers.map((member) => ({
           memberId: member.id,
@@ -363,16 +425,37 @@ export function EventModal({
                 gameValues={gameValues}
                 gameDeltaCents={gameDeltaCents}
                 gameMode={gameMode}
+                gameSettled={gameSettled}
                 bankMemberId={bankMemberId}
                 bankBalanceCents={bankBalanceCents}
                 setSelectedParticipantIds={setSelectedParticipantIds}
                 setGameValues={setGameValues}
                 setGameMode={setGameMode}
+                setGameSettled={setGameSettled}
                 setBankMemberId={setBankMemberId}
               />
             )}
           </ScrollView>
+          {type === 'game' && quickGameEntryMembers.length > 0 ? (
+            <Pressable
+              style={({ pressed }) => [styles.floatingFab, pressed && styles.pressed]}
+              onPress={() => setQuickGameEntryVisible(true)}>
+              <SymbolView
+                name={{ ios: 'plus', android: 'add', web: 'add' }}
+                size={22}
+                tintColor={colors.buttonText}
+              />
+            </Pressable>
+          ) : null}
         </KeyboardAvoidingView>
+        {type === 'game' ? (
+          <GameQuickEntryModal
+            visible={quickGameEntryVisible}
+            members={quickGameEntryMembers}
+            onClose={() => setQuickGameEntryVisible(false)}
+            onApply={applyQuickGameEntry}
+          />
+        ) : null}
       </SafeAreaView>
     </Modal>
   );
@@ -422,6 +505,10 @@ function buildPaymentDescription(
   return `${base} · Bezahlt durch ${viaMemberNames.join(', ')}`;
 }
 
+function centsToEditorInput(cents: number) {
+  return cents > 0 ? String(cents / 100).replace('.', ',') : '';
+}
+
 function createStyles(colors: DashboardColors) {
   return StyleSheet.create({
   safeArea: {
@@ -434,7 +521,25 @@ function createStyles(colors: DashboardColors) {
   content: {
     gap: 18,
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: 110,
+  },
+  floatingFab: {
+    alignItems: 'center',
+    backgroundColor: colors.button,
+    borderRadius: 999,
+    bottom: 28,
+    height: 58,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 22,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    width: 58,
+  },
+  pressed: {
+    opacity: 0.78,
   },
   });
 }

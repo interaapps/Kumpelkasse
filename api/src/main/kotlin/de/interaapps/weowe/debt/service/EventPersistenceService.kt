@@ -164,7 +164,7 @@ class EventPersistenceService(
         if (event.title.isBlank()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Event title is required")
         }
-        if (event.lines.isEmpty()) {
+        if (event.type != EventType.GAME && event.lines.isEmpty()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Event needs at least one ledger line")
         }
 
@@ -179,7 +179,7 @@ class EventPersistenceService(
         }
 
         val total = event.lines.sumOf { it.amountCents }
-        if (total != 0L) {
+        if (event.type != EventType.GAME && total != 0L) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Ledger lines must sum to 0")
         }
 
@@ -209,8 +209,21 @@ class EventPersistenceService(
             }
         }
 
-        if (event.type == EventType.GAME && event.gameEntries.any { it.memberId !in knownMemberIds }) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Game contains unknown players")
+        if (event.type == EventType.GAME) {
+            if (event.gameEntries.any { it.memberId !in knownMemberIds }) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Game contains unknown players")
+            }
+            if (event.gameEntries.isEmpty()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Game needs at least one player entry")
+            }
+            if (event.gameSettled) {
+                if (event.lines.isEmpty()) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Completed games need ledger lines")
+                }
+                if (total != 0L) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Completed game ledger lines must sum to 0")
+                }
+            }
         }
 
         if (event.type == EventType.OPTIMIZED_PAYMENT) {

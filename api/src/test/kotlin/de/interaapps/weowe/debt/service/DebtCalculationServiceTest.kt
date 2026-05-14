@@ -2,6 +2,8 @@ package de.interaapps.weowe.debt.service
 
 import de.interaapps.weowe.debt.domain.DebtEvent
 import de.interaapps.weowe.debt.domain.EventType
+import de.interaapps.weowe.debt.domain.GameEntry
+import de.interaapps.weowe.debt.domain.GameMode
 import de.interaapps.weowe.debt.domain.LedgerLine
 import de.interaapps.weowe.debt.domain.Member
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -345,5 +347,43 @@ class DebtCalculationServiceTest {
         assertEquals(setOf("new-1", "new-2"), transfer.explanationLines.map { it.eventId }.toSet())
         assertEquals(1, transfer.routeChains.size)
         assertEquals(setOf("new-1", "new-2"), transfer.routeChains.single().eventIds.toSet())
+    }
+
+    @Test
+    fun `ongoing games are ignored in debt calculation until settled`() {
+        val events = listOf(
+            DebtEvent(
+                id = "live-game",
+                groupId = "friends",
+                type = EventType.GAME,
+                title = "Poker live",
+                createdAt = Instant.parse("2026-05-09T12:00:00Z"),
+                lines = emptyList(),
+                gameMode = GameMode.POKER,
+                gameSettled = false,
+                gameEntries = listOf(
+                    GameEntry(memberId = "julian", buyInCents = 1_000, cashOutCents = 0),
+                    GameEntry(memberId = "alex", buyInCents = 1_000, cashOutCents = 0),
+                ),
+            ),
+            DebtEvent(
+                id = "direct",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Alex schuldet Julian",
+                createdAt = Instant.parse("2026-05-09T13:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "alex", amountCents = -500),
+                    LedgerLine(memberId = "julian", amountCents = 500),
+                ),
+            ),
+        )
+
+        val result = service.calculateSummary(events, members, "julian")
+
+        assertEquals(500, result.summary.owedToMeCents)
+        assertEquals(0, result.summary.owedByMeCents)
+        assertEquals(1, result.directOwedToMe.size)
+        assertEquals("alex", result.directOwedToMe.single().member.id)
     }
 }

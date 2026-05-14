@@ -16,16 +16,26 @@ type GamePlayersEditorProps = {
   members: Member[];
   values: Record<string, GamePlayerValue>;
   deltaCents: number;
+  settled: boolean;
   bankMemberId?: string | null;
   autoBalancedCents?: number;
   onChange: (memberId: string, value: GamePlayerValue) => void;
 };
 
-export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, autoBalancedCents, onChange }: GamePlayersEditorProps) {
+export function GamePlayersEditor({
+  members,
+  values,
+  deltaCents,
+  settled,
+  bankMemberId,
+  autoBalancedCents,
+  onChange,
+}: GamePlayersEditorProps) {
   const colors = useDashboardTheme();
   const styles = createStyles(colors);
+
   return (
-    <>
+    <View style={styles.editorShell}>
       <Text style={styles.sectionTitle}>Spieler</Text>
       <View style={styles.gameList}>
         {members.map((member) => {
@@ -72,7 +82,21 @@ export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, a
           );
         })}
       </View>
-      {deltaCents !== 0 && (
+
+      {!settled && (
+        <View style={styles.liveHint}>
+          <SymbolView
+            name={{ ios: 'clock.fill', android: 'schedule', web: 'schedule' }}
+            size={16}
+            tintColor={colors.positive}
+          />
+          <Text style={styles.liveHintText}>
+            Laufende Session: Das Spiel ist gespeichert, zählt aber noch nicht in die Schuldenrechnung.
+          </Text>
+        </View>
+      )}
+
+      {settled && deltaCents !== 0 && (
         <View style={styles.warningBox}>
           <SymbolView
             name={{ ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' }}
@@ -84,90 +108,108 @@ export function GamePlayersEditor({ members, values, deltaCents, bankMemberId, a
           </Text>
         </View>
       )}
-    </>
+    </View>
   );
 }
 
 function createStyles(colors: DashboardColors) {
-return StyleSheet.create({
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  gameList: {
-    gap: 12,
-  },
-  gameRow: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    gap: 12,
-    padding: 14,
-  },
-  gamePerson: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  gameName: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  bankBadge: {
-    color: '#2563EB',
-    fontSize: 12,
-    fontWeight: '900',
-    marginLeft: 'auto',
-  },
-  gameInputs: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  bankAutoBox: {
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 14,
-    justifyContent: 'center',
-    minHeight: 42,
-    minWidth: 106,
-    paddingHorizontal: 12,
-  },
-  bankAutoText: {
-    color: '#1D4ED8',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  netValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    minWidth: 68,
-    textAlign: 'right',
-  },
-  positive: {
-    color: colors.positive,
-  },
-  negative: {
-    color: colors.negative,
-  },
-  muted: {
-    color: colors.textSubtle,
-  },
-  warningBox: {
-    alignItems: 'flex-start',
-    backgroundColor: '#FFF7ED',
-    borderRadius: 20,
-    flexDirection: 'row',
-    gap: 10,
-    padding: 14,
-  },
-  warningText: {
-    color: '#92400E',
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 19,
-  },
-});
+  return StyleSheet.create({
+    editorShell: {
+      gap: 16,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '900',
+    },
+    gameList: {
+      gap: 12,
+    },
+    gameRow: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      gap: 12,
+      padding: 14,
+    },
+    gamePerson: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+    },
+    gameName: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    bankBadge: {
+      color: '#2563EB',
+      fontSize: 12,
+      fontWeight: '900',
+      marginLeft: 'auto',
+    },
+    gameInputs: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    bankAutoBox: {
+      alignItems: 'center',
+      backgroundColor: '#EFF6FF',
+      borderRadius: 14,
+      justifyContent: 'center',
+      minHeight: 42,
+      minWidth: 106,
+      paddingHorizontal: 12,
+    },
+    bankAutoText: {
+      color: '#1D4ED8',
+      fontSize: 12,
+      fontWeight: '900',
+    },
+    netValue: {
+      fontSize: 14,
+      fontWeight: '900',
+      minWidth: 68,
+      textAlign: 'right',
+    },
+    positive: {
+      color: colors.positive,
+    },
+    negative: {
+      color: colors.negative,
+    },
+    muted: {
+      color: colors.textSubtle,
+    },
+    liveHint: {
+      alignItems: 'flex-start',
+      backgroundColor: `${colors.positive}14`,
+      borderRadius: 20,
+      flexDirection: 'row',
+      gap: 10,
+      padding: 14,
+    },
+    liveHintText: {
+      color: colors.text,
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '800',
+      lineHeight: 19,
+    },
+    warningBox: {
+      alignItems: 'flex-start',
+      backgroundColor: '#FFF7ED',
+      borderRadius: 20,
+      flexDirection: 'row',
+      gap: 10,
+      padding: 14,
+    },
+    warningText: {
+      color: '#92400E',
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '800',
+      lineHeight: 19,
+    },
+  });
 }

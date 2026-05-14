@@ -77,6 +77,7 @@ data class DebtEvent(
     val splitParticipantIds: List<String> = emptyList(),
     val splitShares: List<SplitShare> = emptyList(),
     val gameEntries: List<GameEntry> = emptyList(),
+    val gameSettled: Boolean = true,
     val optimizedPaymentChains: List<OptimizedPaymentChain> = emptyList(),
 )
 

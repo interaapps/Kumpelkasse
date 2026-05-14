@@ -53,7 +53,18 @@ export function useDashboardController() {
   const [activeModal, setActiveModal] = useState<EventModalType | null>(null);
   const [pendingInviteGroupId, setPendingInviteGroupId] = useState<string | null>(null);
   const [joinPromptGroupId, setJoinPromptGroupId] = useState<string | null>(null);
+  const [dashboardRevision, setDashboardRevision] = useState(0);
   const appState = useRef(AppState.currentState);
+  const hasBlockingUi =
+    Boolean(activeModal) ||
+    Boolean(selectedEvent) ||
+    profileVisible ||
+    inviteVisible ||
+    groupSelectorVisible ||
+    groupCreationVisible ||
+    Boolean(joinPromptGroupId) ||
+    isLoadingDashboard ||
+    isRefreshing;
 
   useEffect(() => {
     let active = true;
@@ -164,7 +175,7 @@ export function useDashboardController() {
       const wasAway = appState.current === 'background' || appState.current === 'inactive';
       appState.current = nextState;
 
-      if (wasAway && nextState === 'active' && currentUserId) {
+      if (wasAway && nextState === 'active' && currentUserId && !hasBlockingUi) {
         reloadDashboard().catch(() => {
           setErrorMessage('Aktualisierung fehlgeschlagen. Prüfe bitte, ob die API erreichbar ist.');
         });
@@ -172,7 +183,29 @@ export function useDashboardController() {
     });
 
     return () => subscription.remove();
-  }, [currentUserId, selectedGroupId]);
+  }, [currentUserId, hasBlockingUi, selectedGroupId]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (appState.current !== 'active' || hasBlockingUi) {
+        return;
+      }
+
+      reloadDashboard().catch(() => {
+        // Keep background refresh silent to avoid interrupting active use.
+      });
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [
+    currentUserId,
+    hasBlockingUi,
+    selectedGroupId,
+  ]);
 
   async function reloadDashboard(nextGroupId = selectedGroupId) {
     if (!currentUserId) {
@@ -185,6 +218,7 @@ export function useDashboardController() {
 
   async function applyDashboard(nextDashboard: DashboardResponse) {
     setDashboard(nextDashboard);
+    setDashboardRevision((current) => current + 1);
     setSelectedGroupId(nextDashboard.selectedGroupId);
     setSelectedMemberId((current) => current ?? nextDashboard.currentUserId);
     await storeCachedDashboard(nextDashboard);
@@ -377,6 +411,7 @@ export function useDashboardController() {
       joinPromptGroupId,
       profileVisible,
       currentUserId,
+      dashboardRevision,
       selectedEvent,
       selectedGroupId,
       selectedMemberId,

@@ -227,7 +227,10 @@ class DebtCalculationService {
     ): CycleState {
         val memberMap = members.associateBy { it.id }
         val accumulators = mutableMapOf<String, MutableCycleAccumulator>()
-        events.sortedBy { it.createdAt }.forEach { event ->
+        events
+            .filter { it.type != de.interaapps.weowe.debt.domain.EventType.GAME || it.gameSettled }
+            .sortedBy { it.createdAt }
+            .forEach { event ->
             event.lines.forEach { line ->
                 val accumulator = accumulators.getOrPut(line.memberId) { MutableCycleAccumulator() }
                 if (accumulator.amountCents == 0L && accumulator.currentEventIds.isNotEmpty()) {

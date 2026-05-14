@@ -72,6 +72,8 @@ class DebtEventGameDetailsEntity(
     var event: DebtEventEntity? = null,
     @Enumerated(EnumType.STRING)
     var gameMode: GameMode? = null,
+    @Column(nullable = false)
+    var settled: Boolean = true,
     var bankMemberId: String? = null,
     @Column(length = 8_000)
     var entriesJson: String? = null,

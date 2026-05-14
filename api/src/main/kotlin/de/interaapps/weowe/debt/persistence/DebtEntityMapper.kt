@@ -75,6 +75,7 @@ fun DebtEventEntity.toDomain(): DebtEvent =
         splitParticipantIds = splitDetails?.participantIdsJson.fromJsonList(),
         splitShares = splitDetails?.sharesJson.fromJsonTypedList(),
         gameEntries = gameDetails?.entriesJson.fromJsonTypedList(),
+        gameSettled = gameDetails?.settled ?: lines.isNotEmpty(),
         optimizedPaymentChains = optimizedPaymentDetails?.chainsJson.fromJsonTypedList(),
     )
 
@@ -115,6 +116,7 @@ fun DebtEvent.toGameDetailsEntity(event: DebtEventEntity): DebtEventGameDetailsE
     return DebtEventGameDetailsEntity(
         event = event,
         gameMode = gameMode ?: GameMode.POKER,
+        settled = gameSettled,
         bankMemberId = bankMemberId,
         entriesJson = gameEntries.toJsonList(),
     )

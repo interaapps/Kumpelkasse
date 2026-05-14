@@ -11,6 +11,7 @@ export function hydrateFromEvent(
     setFromMemberId: (value: string) => void;
     setGameValues: (value: Record<string, GamePlayerValue>) => void;
     setGameMode?: (value: GameMode) => void;
+    setGameSettled?: (value: boolean) => void;
     setBankMemberId?: (value: string | null) => void;
     setManualShares?: (value: Record<string, string>) => void;
     setPayerId: (value: string) => void;
@@ -69,6 +70,7 @@ export function hydrateFromEvent(
       const selectedIds = event.gameEntries.map((entry) => entry.memberId);
       setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
       setters.setGameMode?.(event.gameMode ?? 'poker');
+      setters.setGameSettled?.(event.gameSettled ?? event.lines.length > 0);
       setters.setBankMemberId?.(event.bankMemberId ?? null);
       setters.setGameValues(
         Object.fromEntries(
@@ -87,6 +89,7 @@ export function hydrateFromEvent(
     const selectedIds = event.lines.map((line) => line.memberId);
     setters.setSelectedParticipantIds(selectedIds.length > 0 ? selectedIds : setters.defaultParticipantIds);
     setters.setGameMode?.(event.gameMode ?? 'poker');
+    setters.setGameSettled?.(event.gameSettled ?? event.lines.length > 0);
     setters.setBankMemberId?.(event.bankMemberId ?? null);
     setters.setGameValues(
       Object.fromEntries(

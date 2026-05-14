@@ -10,7 +10,7 @@ type Filters = {
   mineOnly: boolean;
 };
 
-export function useEventFeed(groupId: string, visible: boolean, filters: Filters) {
+export function useEventFeed(groupId: string, visible: boolean, filters: Filters, refreshToken = 0) {
   const [events, setEvents] = useState<DebtEvent[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -75,7 +75,7 @@ export function useEventFeed(groupId: string, visible: boolean, filters: Filters
     return () => {
       active = false;
     };
-  }, [groupId, normalizedFilters, visible]);
+  }, [groupId, normalizedFilters, refreshToken, visible]);
 
   async function loadMore() {
     if (!visible || isLoadingInitial || isLoadingMore || !hasMore) {

@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/dashboard/Avatar';
 import { DashboardColors, useDashboardTheme } from '@/components/dashboard/theme';
-import { OptimizedPaymentChain, SettlementRow, SettlementTransfer } from '@/types/debt';
+import { Member, OptimizedPaymentChain, SettlementRow, SettlementTransfer } from '@/types/debt';
 import { formatEuro } from '@/utils/debt';
 
 type DebtOverviewCardProps = {
   currentUserId: string;
+  members: Member[];
   directOwedByMe: SettlementRow[];
   directOwedToMe: SettlementRow[];
   optimizedOwedByMe: SettlementRow[];
@@ -23,6 +24,7 @@ type DebtMode = 'direct' | 'optimized';
 
 export function DebtOverviewCard({
   currentUserId,
+  members,
   directOwedByMe,
   directOwedToMe,
   optimizedOwedByMe,
@@ -36,6 +38,7 @@ export function DebtOverviewCard({
   const styles = createStyles(colors);
   const [mode, setMode] = useState<DebtMode>('direct');
   const [selectedTransfer, setSelectedTransfer] = useState<SettlementTransfer | null>(null);
+  const memberNameById = new Map(members.map((member) => [member.id, member.name]));
 
   const owedByMeRows = mode === 'direct' ? directOwedByMe : optimizedOwedByMe;
   const owedToMeRows = mode === 'direct' ? directOwedToMe : optimizedOwedToMe;
@@ -105,6 +108,7 @@ export function DebtOverviewCard({
               <View style={styles.separator} />
               <OptimizedTransfers
                 currentUserId={currentUserId}
+                memberNameById={memberNameById}
                 transfers={optimizedTransfers}
                 onSelectTransfer={setSelectedTransfer}
                 onCreateOptimizedPayment={onCreateOptimizedPayment}
@@ -118,6 +122,7 @@ export function DebtOverviewCard({
 
       <TransferExplanationModal
         transfer={selectedTransfer}
+        memberNameById={memberNameById}
         visible={Boolean(selectedTransfer)}
         onClose={() => setSelectedTransfer(null)}
         styles={styles}
@@ -147,6 +152,7 @@ function ModeButton({
 
 function OptimizedTransfers({
   currentUserId,
+  memberNameById,
   transfers,
   onSelectTransfer,
   onCreateOptimizedPayment,
@@ -154,6 +160,7 @@ function OptimizedTransfers({
   colors,
 }: {
   currentUserId: string;
+  memberNameById: Map<string, string>;
   transfers: SettlementTransfer[];
   onSelectTransfer: (transfer: SettlementTransfer) => void;
   onCreateOptimizedPayment?: (transfer: SettlementTransfer) => void;
@@ -191,7 +198,7 @@ function OptimizedTransfers({
               </View>
               <Text style={[styles.amount, styles.positive]}>{formatEuro(transfer.amountCents)}</Text>
             </View>
-            <Text style={styles.transferSummaryText}>{describeRouteChains(transfer.routeChains)}</Text>
+            <Text style={styles.transferSummaryText}>{describeRouteChains(transfer.routeChains, memberNameById)}</Text>
             <View style={styles.transferFooter}>
               <Text style={styles.transferHint}>Basiert auf {transfer.eventCount} Event{transfer.eventCount === 1 ? '' : 's'}</Text>
               {transfer.from.id === currentUserId ? (
@@ -214,11 +221,13 @@ function OptimizedTransfers({
 
 function TransferExplanationModal({
   transfer,
+  memberNameById,
   visible,
   onClose,
   styles,
 }: {
   transfer: SettlementTransfer | null;
+  memberNameById: Map<string, string>;
   visible: boolean;
   onClose: () => void;
   styles: ReturnType<typeof createStyles>;
@@ -260,7 +269,7 @@ function TransferExplanationModal({
               transfer.routeChains.map((chain, index) => (
                 <View key={`${chain.memberIds.join('-')}-${index}`} style={styles.chainRow}>
                   <Text style={styles.chainAmount}>{formatEuro(chain.amountCents)}</Text>
-                  <Text style={styles.chainText}>{formatChain(chain)}</Text>
+                  <Text style={styles.chainText}>{formatChain(chain, memberNameById)}</Text>
                 </View>
               ))
             )}
@@ -381,10 +390,10 @@ function formatSignedEuro(amountCents: number) {
   return `${prefix}${formatEuro(Math.abs(amountCents))}`;
 }
 
-function describeRouteChains(chains: OptimizedPaymentChain[]) {
+function describeRouteChains(chains: OptimizedPaymentChain[], memberNameById: Map<string, string>) {
   const middleNames = Array.from(
     new Set(
-      chains.flatMap((chain) => chain.memberIds.slice(1, -1)),
+      chains.flatMap((chain) => chain.memberIds.slice(1, -1)).map((memberId) => memberNameById.get(memberId) ?? memberId),
     ),
   );
 
@@ -395,11 +404,12 @@ function describeRouteChains(chains: OptimizedPaymentChain[]) {
   return `Bezahlt durch ${middleNames.join(', ')}`;
 }
 
-function formatChain(chain: OptimizedPaymentChain) {
+function formatChain(chain: OptimizedPaymentChain, memberNameById: Map<string, string>) {
+  const memberNames = chain.memberIds.map((memberId) => memberNameById.get(memberId) ?? memberId);
   if (chain.memberIds.length <= 2) {
-    return chain.memberIds.join(' → ');
+    return memberNames.join(' → ');
   }
-  return `${chain.memberIds.join(' → ')} · ${chain.eventTitles.length} Grund${chain.eventTitles.length === 1 ? '' : 'e'}`;
+  return `${memberNames.join(' → ')} · ${chain.eventTitles.length} Grund${chain.eventTitles.length === 1 ? '' : 'e'}`;
 }
 
 function groupExplanationLines(transfer: SettlementTransfer) {
