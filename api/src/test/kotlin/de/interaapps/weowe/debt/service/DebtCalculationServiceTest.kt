@@ -190,6 +190,67 @@ class DebtCalculationServiceTest {
     }
 
     @Test
+    fun `direct home debts keep pairwise payment state even when a third person is involved`() {
+        val events = listOf(
+            DebtEvent(
+                id = "julian-alex",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Julian schuldet Alex",
+                createdAt = Instant.parse("2026-05-09T12:00:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "julian", amountCents = -1_000),
+                    LedgerLine(memberId = "alex", amountCents = 1_000),
+                ),
+            ),
+            DebtEvent(
+                id = "tim-julian",
+                groupId = "friends",
+                type = EventType.DIRECT,
+                title = "Tim schuldet Julian",
+                createdAt = Instant.parse("2026-05-09T12:05:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "tim", amountCents = -1_000),
+                    LedgerLine(memberId = "julian", amountCents = 1_000),
+                ),
+            ),
+            DebtEvent(
+                id = "payment",
+                groupId = "friends",
+                type = EventType.PAYMENT,
+                title = "Julian bezahlt Alex teilweise",
+                createdAt = Instant.parse("2026-05-09T12:10:00Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "julian", amountCents = 500),
+                    LedgerLine(memberId = "alex", amountCents = -500),
+                ),
+            ),
+        )
+
+        val result = service.calculateSummary(
+            events = events,
+            members = listOf(
+                Member(id = "julian", name = "Julian", initials = "J"),
+                Member(id = "alex", name = "Alex", initials = "A"),
+                Member(id = "tim", name = "Tim", initials = "T"),
+            ),
+            currentUserId = "julian",
+        )
+
+        assertEquals(500, result.summary.owedToMeCents)
+        assertEquals(0, result.summary.owedByMeCents)
+        assertEquals(500, result.summary.netCents)
+
+        assertEquals(1, result.directOwedByMe.size)
+        assertEquals("alex", result.directOwedByMe.single().member.id)
+        assertEquals(500, result.directOwedByMe.single().amountCents)
+
+        assertEquals(1, result.directOwedToMe.size)
+        assertEquals("tim", result.directOwedToMe.single().member.id)
+        assertEquals(1_000, result.directOwedToMe.single().amountCents)
+    }
+
+    @Test
     fun `split where payer also participates keeps original event count and debt size`() {
         val events = listOf(
             DebtEvent(

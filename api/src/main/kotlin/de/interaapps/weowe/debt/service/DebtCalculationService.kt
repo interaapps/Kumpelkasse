@@ -18,9 +18,10 @@ class DebtCalculationService {
         currentUserId: String,
     ): DashboardCalculation {
         val cycleState = buildCycleState(events, members)
-        val directTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
-        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, directTransfers)
-        val directRows = toUserRows(currentUserId, directTransfers, members)
+        val outstandingDirectTransfers = calculateDirectTransfers(events)
+        val activeCycleDirectTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, activeCycleDirectTransfers)
+        val directRows = toUserRows(currentUserId, outstandingDirectTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
         val currentBalance = cycleState.accumulators[currentUserId]?.amountCents ?: 0L
 
@@ -44,9 +45,10 @@ class DebtCalculationService {
         currentUserId: String,
     ): Settlements {
         val cycleState = buildCycleState(events, members)
-        val directTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
-        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, directTransfers)
-        val directRows = toUserRows(currentUserId, directTransfers, members)
+        val outstandingDirectTransfers = calculateDirectTransfers(events)
+        val activeCycleDirectTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, activeCycleDirectTransfers)
+        val directRows = toUserRows(currentUserId, outstandingDirectTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
 
         return Settlements(
@@ -57,6 +59,10 @@ class DebtCalculationService {
             optimizedTransfers = optimizedTransfers,
         )
     }
+
+    private fun calculateDirectTransfers(
+        events: List<DebtEvent>,
+    ): List<DirectTransfer> = calculateDirectTransfers(events, emptyMap())
 
     private fun calculateDirectTransfers(
         events: List<DebtEvent>,
@@ -82,9 +88,10 @@ class DebtCalculationService {
                 val debtor = debtors[debtorIndex]
                 val creditor = creditors[creditorIndex]
                 val amount = minOf(debtor.amountCents, creditor.amountCents)
+                val shouldFilterByActiveCycle = activeEventIdsByMember.isNotEmpty()
                 val debtorActiveEvents = activeEventIdsByMember[debtor.memberId].orEmpty()
                 val creditorActiveEvents = activeEventIdsByMember[creditor.memberId].orEmpty()
-                if (event.id !in debtorActiveEvents || event.id !in creditorActiveEvents) {
+                if (shouldFilterByActiveCycle && (event.id !in debtorActiveEvents || event.id !in creditorActiveEvents)) {
                     debtor.amountCents -= amount
                     creditor.amountCents -= amount
                     if (debtor.amountCents == 0L) debtorIndex += 1
