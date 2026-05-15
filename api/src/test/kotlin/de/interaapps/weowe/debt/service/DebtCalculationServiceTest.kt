@@ -7,6 +7,7 @@ import de.interaapps.weowe.debt.domain.GameMode
 import de.interaapps.weowe.debt.domain.LedgerLine
 import de.interaapps.weowe.debt.domain.Member
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
@@ -448,5 +449,147 @@ class DebtCalculationServiceTest {
         assertEquals(0, result.summary.owedByMeCents)
         assertEquals(1, result.directOwedToMe.size)
         assertEquals("alex", result.directOwedToMe.single().member.id)
+    }
+
+    @Test
+    fun `provided real world dataset leaves only julian owing liam ten euros`() {
+        val events = listOf(
+            DebtEvent(
+                id = "event-split-1778529868450",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.SPLIT,
+                title = "Plane",
+                description = "LiamRathai hat bezahlt · 4 Teilnehmer",
+                createdAt = Instant.parse("2026-05-11T20:04:28Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = 6_000),
+                    LedgerLine(memberId = "user-c773079f-7439-4af6-a06c-a0382b9e417d", amountCents = -2_000),
+                    LedgerLine(memberId = "user-9da1e4ec-2dda-45cc-b448-79ac1b20d9e6", amountCents = -2_000),
+                    LedgerLine(memberId = "user-0401c230-1173-47a8-a537-c456ac941af3", amountCents = -2_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-direct-1778608682772",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.DIRECT,
+                title = "Burgerme",
+                description = "Julian schuldet LiamRathai",
+                createdAt = Instant.parse("2026-05-12T17:58:02Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = -1_000),
+                    LedgerLine(memberId = "user-9da1e4ec-2dda-45cc-b448-79ac1b20d9e6", amountCents = 1_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-game-1778702003256",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.GAME,
+                title = "Pokerabend",
+                createdAt = Instant.parse("2026-05-13T19:53:23Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0401c230-1173-47a8-a537-c456ac941af3", amountCents = -600),
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = 390),
+                    LedgerLine(memberId = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", amountCents = 5_210),
+                    LedgerLine(memberId = "user-c773079f-7439-4af6-a06c-a0382b9e417d", amountCents = -5_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-payment-1778608759529",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.PAYMENT,
+                title = "Zahlung",
+                description = "Koskonrad hat LiamRathai bezahlt",
+                createdAt = Instant.parse("2026-05-12T17:59:19Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0401c230-1173-47a8-a537-c456ac941af3", amountCents = 2_000),
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = -2_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-payment-1778710250761",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.PAYMENT,
+                title = "Zahlung",
+                description = "Koskonrad hat Linus bezahlt",
+                createdAt = Instant.parse("2026-05-13T22:10:50Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0401c230-1173-47a8-a537-c456ac941af3", amountCents = 210),
+                    LedgerLine(memberId = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", amountCents = -210),
+                ),
+            ),
+            DebtEvent(
+                id = "event-payment-1778770884819",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.PAYMENT,
+                title = "Bezahlt Paypal",
+                description = "Zahlung",
+                createdAt = Instant.parse("2026-05-14T15:01:24Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-c773079f-7439-4af6-a06c-a0382b9e417d", amountCents = 5_000),
+                    LedgerLine(memberId = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", amountCents = -5_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-payment-1778770922734",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.PAYMENT,
+                title = "Bazahlt Überweisung",
+                description = "Zahlung",
+                createdAt = Instant.parse("2026-05-14T15:02:02Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-c773079f-7439-4af6-a06c-a0382b9e417d", amountCents = 2_000),
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = -2_000),
+                ),
+            ),
+            DebtEvent(
+                id = "event-payment-1778771224809",
+                groupId = "group-934e710b-67aa-4588-8a27-9b05a7326974",
+                type = EventType.PAYMENT,
+                title = "Koskonrad hat Liam bezahlt",
+                description = "Zahlung",
+                createdAt = Instant.parse("2026-05-14T15:07:04Z"),
+                lines = listOf(
+                    LedgerLine(memberId = "user-0401c230-1173-47a8-a537-c456ac941af3", amountCents = 390),
+                    LedgerLine(memberId = "user-0346468e-a424-434f-abf6-fc29606e4ef6", amountCents = -390),
+                ),
+            ),
+        )
+
+        val result = service.calculateSummary(
+            events = events,
+            members = listOf(
+                Member(id = "user-0346468e-a424-434f-abf6-fc29606e4ef6", name = "Liam", initials = "L"),
+                Member(id = "user-0401c230-1173-47a8-a537-c456ac941af3", name = "Koskonrad", initials = "K"),
+                Member(id = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", name = "Linus", initials = "L"),
+                Member(id = "user-9da1e4ec-2dda-45cc-b448-79ac1b20d9e6", name = "Julian", initials = "J"),
+                Member(id = "user-c773079f-7439-4af6-a06c-a0382b9e417d", name = "Matti", initials = "M"),
+            ),
+            currentUserId = "user-9d65d34a-b25a-4467-840d-9dbcda773e08",
+        )
+
+        assertEquals(0, result.summary.netCents)
+        assertEquals(0, result.summary.owedByMeCents)
+        assertEquals(0, result.summary.owedToMeCents)
+        assertTrue(result.directOwedByMe.isEmpty())
+        assertTrue(result.directOwedToMe.isEmpty())
+        assertTrue(result.optimizedOwedByMe.isEmpty())
+        assertTrue(result.optimizedOwedToMe.isEmpty())
+
+        val julianView = service.calculateSummary(
+            events = events,
+            members = listOf(
+                Member(id = "user-0346468e-a424-434f-abf6-fc29606e4ef6", name = "Liam", initials = "L"),
+                Member(id = "user-0401c230-1173-47a8-a537-c456ac941af3", name = "Koskonrad", initials = "K"),
+                Member(id = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", name = "Linus", initials = "L"),
+                Member(id = "user-9da1e4ec-2dda-45cc-b448-79ac1b20d9e6", name = "Julian", initials = "J"),
+                Member(id = "user-c773079f-7439-4af6-a06c-a0382b9e417d", name = "Matti", initials = "M"),
+            ),
+            currentUserId = "user-9da1e4ec-2dda-45cc-b448-79ac1b20d9e6",
+        )
+
+        assertEquals(-1_000, julianView.summary.netCents)
+        assertEquals(1_000, julianView.summary.owedByMeCents)
+        assertEquals("user-0346468e-a424-434f-abf6-fc29606e4ef6", julianView.optimizedOwedByMe.single().member.id)
+        assertEquals(1_000, julianView.optimizedOwedByMe.single().amountCents)
     }
 }
