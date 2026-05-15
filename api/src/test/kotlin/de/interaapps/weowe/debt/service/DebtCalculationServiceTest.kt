@@ -492,6 +492,7 @@ class DebtCalculationServiceTest {
                     LedgerLine(memberId = "user-9d65d34a-b25a-4467-840d-9dbcda773e08", amountCents = 5_210),
                     LedgerLine(memberId = "user-c773079f-7439-4af6-a06c-a0382b9e417d", amountCents = -5_000),
                 ),
+                gameSettled = false,
             ),
             DebtEvent(
                 id = "event-payment-1778608759529",

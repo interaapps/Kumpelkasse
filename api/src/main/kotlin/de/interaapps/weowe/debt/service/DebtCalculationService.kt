@@ -17,9 +17,10 @@ class DebtCalculationService {
         members: List<Member>,
         currentUserId: String,
     ): DashboardCalculation {
-        val cycleState = buildCycleState(events, members)
-        val outstandingDirectTransfers = calculateDirectTransfers(events)
-        val activeCycleDirectTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val relevantEvents = relevantEvents(events)
+        val cycleState = buildCycleState(relevantEvents, members)
+        val outstandingDirectTransfers = calculateDirectTransfers(relevantEvents)
+        val activeCycleDirectTransfers = calculateDirectTransfers(relevantEvents, cycleState.activeEventIdsByMember)
         val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, activeCycleDirectTransfers)
         val directRows = toUserRows(currentUserId, outstandingDirectTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
@@ -44,9 +45,10 @@ class DebtCalculationService {
         members: List<Member>,
         currentUserId: String,
     ): Settlements {
-        val cycleState = buildCycleState(events, members)
-        val outstandingDirectTransfers = calculateDirectTransfers(events)
-        val activeCycleDirectTransfers = calculateDirectTransfers(events, cycleState.activeEventIdsByMember)
+        val relevantEvents = relevantEvents(events)
+        val cycleState = buildCycleState(relevantEvents, members)
+        val outstandingDirectTransfers = calculateDirectTransfers(relevantEvents)
+        val activeCycleDirectTransfers = calculateDirectTransfers(relevantEvents, cycleState.activeEventIdsByMember)
         val optimizedTransfers = calculateOptimizedTransfers(members, cycleState.accumulators, activeCycleDirectTransfers)
         val directRows = toUserRows(currentUserId, outstandingDirectTransfers, members)
         val optimizedRows = toUserRows(currentUserId, optimizedTransfers.map { it.toPartyTransfer() }, members)
@@ -235,7 +237,6 @@ class DebtCalculationService {
         val memberMap = members.associateBy { it.id }
         val accumulators = mutableMapOf<String, MutableCycleAccumulator>()
         events
-            .filter { it.type != de.interaapps.weowe.debt.domain.EventType.GAME || it.gameSettled }
             .sortedBy { it.createdAt }
             .forEach { event ->
             event.lines.forEach { line ->
@@ -406,6 +407,13 @@ class DebtCalculationService {
 
         return path.asReversed()
     }
+
+    private fun relevantEvents(events: List<DebtEvent>): List<DebtEvent> =
+        events.filter { event ->
+            event.type != de.interaapps.weowe.debt.domain.EventType.GAME ||
+                event.gameSettled ||
+                event.lines.isNotEmpty()
+        }
 }
 
 data class DashboardCalculation(

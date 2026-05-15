@@ -126,6 +126,7 @@ class EventPersistenceService(
                 existing.gameDetails?.apply {
                     this.event = existing
                     this.gameMode = desired.gameMode
+                    this.settled = desired.settled
                     this.bankMemberId = desired.bankMemberId
                     this.entriesJson = desired.entriesJson
                 }
